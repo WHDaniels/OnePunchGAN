@@ -1,6 +1,11 @@
 # Other
 data/
 downloadTest/
+train/
+test/
+models/
+weights/
+results/
 *.ini
 
 # Byte-compiled / optimized / DLL files
