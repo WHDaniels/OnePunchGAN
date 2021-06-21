@@ -58,12 +58,12 @@ class Generator(nn.Module):
             nn.ReLU(inplace=True),
 
             # d128
-            nn.Conv2d(64, 128, (3, 3), stride=(2, 2)),
+            nn.Conv2d(64, 128, (3, 3), stride=(2, 2), padding=(1, 1)),
             nn.InstanceNorm2d(128),
             nn.ReLU(inplace=True),
 
             # d256
-            nn.Conv2d(128, 256, (3, 3), stride=(2, 2)),
+            nn.Conv2d(128, 256, (3, 3), stride=(2, 2), padding=(1, 1)),
             nn.InstanceNorm2d(256),
             nn.ReLU(inplace=True),
 
@@ -90,7 +90,7 @@ class Generator(nn.Module):
 
             # c7s1-64
             nn.ReflectionPad2d(3),
-            nn.Conv2d(1, 3, (7, 7), stride=(2, 2)),
+            nn.Conv2d(64, 3, (7, 7)),
             nn.Tanh()
 
         )
