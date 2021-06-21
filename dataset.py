@@ -19,8 +19,11 @@ class PanelDataset(Dataset):
         self.image_path_A = os.path.join(self.data_path_A, self.image_list_A[i])
         self.image_path_B = os.path.join(self.data_path_B, self.image_list_B[i])
 
-        self.image_A = Image.open(self.image_path_A)
-        self.image_B = Image.open(self.image_path_B)
+        self.image_A = Image.open(self.image_path_A).convert('RGB')
+        self.image_B = Image.open(self.image_path_B).convert('RGB')
+
+        print(self.image_A.size)
+        print(self.image_B.size)
 
         self.original_B_size = self.image_B.size  # may not need
         self.original_A_size = self.image_A.size  # may not need
@@ -28,7 +31,7 @@ class PanelDataset(Dataset):
         # maybe see here if you can crop a 512x512 image out instead of resizing (image would need to be very big)
         # --> refactor above if not implemented
 
-        return get_augmented_images(self.image_A, self.image_B, self.mode)
+        return get_augmented_images(self.image_A, self.image_B, self.mode, self.image_size)
 
     def __len__(self):
         return len(self.image_list_A)
