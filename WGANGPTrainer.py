@@ -27,14 +27,6 @@ class WGANGPTrainer(BaseTrainer):
 
         self.fake_output = None
 
-        one = torch.FloatTensor([1])
-        # device 2 below
-        self.one = one.to(self.device1)
-
-        self.minus_one = self.one * -1
-        # device 2 below
-        self.minus_one = self.minus_one.to(self.device1)
-
     def train(self):
 
         self.initialize_training()
@@ -60,25 +52,22 @@ class WGANGPTrainer(BaseTrainer):
                 rest = zip(rest_A_grey, rest_B_rgb)
 
                 # Train generator
-                ### SAVE GENERATOR !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                # gen_error = self.train_generator(first_B)
-                # print(gen_error,  " ----------------------")
-                # set to none = true
 
-                #uncomment below
-                # for param in self.critic.parameters():
-                    # param.requires_grad = False
+                """
+                Please re-enable generator saving when training generator
                 
-                # self.gen.zero_grad()
-                # self.fake_output = self.gen(first_B)
-                # critic_generated = self.critic(self.fake_output)
-                # gen_cost = - critic_generated.mean()
-                # print('gen_cost', gen_cost)
-                # gen_cost.backward()
-                # self.gen_optimizer.step()
+                for param in self.critic.parameters():
+                    param.requires_grad = False
+                    
+                self.gen.zero_grad()
+                self.fake_output = self.gen(first_B)
+                critic_generated = self.critic(self.fake_output)
+                gen_cost = - critic_generated.mean()
+                print('gen_cost', gen_cost)
+                gen_cost.backward()
+                self.gen_optimizer.step()
+                """
 
-
-                # set to none = true ?
                 for param in self.critic.parameters():
                     param.requires_grad = True
 
@@ -89,12 +78,6 @@ class WGANGPTrainer(BaseTrainer):
                     # device 2 below
                     real_input = B.to(self.device1)  # colored real input
 
-                    # real_pred = self.critic(real_out)
-
-                    # total_critic_loss += self.train_critic(real_input, real_output)
-
-                    ###################################################################################################
-                    ###################################################################################################
                     self.critic.zero_grad()
 
                     with torch.no_grad():
@@ -105,31 +88,22 @@ class WGANGPTrainer(BaseTrainer):
                     # if training B2A:
                     # real_output here should be a 1-channel greyscale image (take 1-channel version of image from dataloader)
                     real_pred = self.critic(real_output)
-                    # real_pred.backward(self.minus_one)
 
-                    # print("Real prediction:", real_pred)
                     # and fake_B should be a 1-channel greyscale image (set ColorNet(dim=1), not hard)
                     fake_pred = self.critic(self.fake_output)
-                    # fake_pred.backward(self.one)
-
-                    # print("Fake prediction:", fake_pred)
 
                     # calculate gradient penalty
                     # here want 1-channel version of real_input as well, to match fake_B
                     ### gradient_penalty = self.calc_gradient_penalty(real_output, self.fake_output)
-                    # with autograd.detect_anomaly():
-                    # gradient_penalty.backward()
 
                     alpha = torch.rand(self.args.batch_size, 1)
                     alpha = alpha.expand(self.args.batch_size,
                                          int(real_output.nelement() / self.args.batch_size)).contiguous()
-                    # out dim here
                     alpha = alpha.view(self.args.batch_size, self.channels, self.args.image_size, self.args.image_size)
                     alpha = alpha.to(self.device1)
 
-                    # out dim here
                     # fake_data = self.fake_output.view(self.args.batch_size, self.channels, self.args.image_size, self.args.image_size)
-                    # interpolates = alpha * real_data.detach() + ((1 - alpha) * fake_data.detach())
+                    # interpolated = alpha * real_data.detach() + ((1 - alpha) * fake_data.detach())
                     interpolated = alpha * real_output + ((1 - alpha) * self.fake_output)
                     interpolated = interpolated.to(self.device1)
                     interpolated.requires_grad_(True)
@@ -143,9 +117,6 @@ class WGANGPTrainer(BaseTrainer):
 
                     gradients = gradients.view(real_output.size(0), -1)
                     gradient_penalty = (((gradients + 1e-16).norm(2, dim=1) - 1.0) ** 2).mean() * 10
-                    # gradient_penalty.backward()
-                    # gradients = (1. - torch.sqrt(1e-8 + torch.sum(gradients.view(gradients.size(0), -1) ** 2, dim=1)))
-                    # gradient_penalty = (torch.mean(gradients) ** 2) * 10
 
                     # final critic cost
                     critic_cost = fake_pred.mean() - real_pred.mean() + gradient_penalty
@@ -158,18 +129,9 @@ class WGANGPTrainer(BaseTrainer):
                     print("gp", gradient_penalty)
                     print("\n")
 
-                    # print(fake_pred)
-                    # print(real_pred)
-                    # print(gradient_penalty)
-                    # print(critic_cost)
-
                     self.critic_optimizer.step()
                     total_critic_loss += critic_cost.cpu().detach().item()
 
-                ###################################################################################################
-                ###################################################################################################
-
-                # print(total_critic_loss)
                 # if training both
                 ## self.loss_list.append((gen_cost.detach().item(), total_critic_loss / self.args.critic_iters))
                 # if training critic only
@@ -185,126 +147,6 @@ class WGANGPTrainer(BaseTrainer):
 
         self.final_save()
 
-    #def train_generator(self, real_input):
-    #    for param in self.critic.parameters():
-    #        param.requires_grad = False
-    #    # set to none = true
-    #    self.gen.zero_grad()
-#
-    #    self.fake_output = self.gen(real_input)
-    #    # test = self.critic.to(self.device2)
-#
-    #    gen_cost = self.critic(self.fake_output)
-    #    gen_cost.backward(self.minus_one)
-#
-    #    self.gen_optimizer.step()
-#
-    #    return -gen_cost.cpu()
-#
-    #def train_critic(self, real_input, real_output):
-    #    self.critic.zero_grad()
-#
-    #    with torch.no_grad():
-    #        # real_input here is 3-channel image
-    #        gen_input = real_input  # totally freeze G, training D
-    #    self.fake_output = self.gen(gen_input).detach()
-#
-    #    # if training B2A:
-    #    # real_output here should be a 1-channel greyscale image (take 1-channel version of image from dataloader)
-    #    real_pred = self.critic(real_output)
-    #    # real_pred.backward(self.minus_one)
-#
-    #    # print("Real prediction:", real_pred)
-    #    # and fake_B should be a 1-channel greyscale image (set ColorNet(dim=1), not hard)
-    #    fake_pred = self.critic(self.fake_output)
-    #    # fake_pred.backward(self.one)
-#
-    #    # print("Fake prediction:", fake_pred)
-#
-    #    # calculate gradient penalty
-    #    # here want 1-channel version of real_input as well, to match fake_B
-    #    ### gradient_penalty = self.calc_gradient_penalty(real_output, self.fake_output)
-    #    # with autograd.detect_anomaly():
-    #    # gradient_penalty.backward()
-#
-    #    alpha = torch.rand(self.args.batch_size, 1)
-    #    alpha = alpha.expand(self.args.batch_size, int(real_output.nelement() / self.args.batch_size)).contiguous()
-    #    # out dim here
-    #    alpha = alpha.view(self.args.batch_size, self.channels, self.args.image_size, self.args.image_size)
-    #    alpha = alpha.to(self.device1)
-#
-    #    # out dim here
-    #    # fake_data = self.fake_output.view(self.args.batch_size, self.channels, self.args.image_size, self.args.image_size)
-    #    # interpolates = alpha * real_data.detach() + ((1 - alpha) * fake_data.detach())
-    #    interpolated = alpha * real_output + ((1 - alpha) * self.fake_output)
-    #    interpolated = interpolated.to(self.device1)
-    #    interpolated.requires_grad_(True)
-#
-    #    interpolated = autograd.Variable(interpolated, requires_grad=True)
-    #    critic_interpolated = self.critic(interpolated)
-#
-    #    gradients = autograd.grad(outputs=critic_interpolated, inputs=interpolated,
-    #                              grad_outputs=torch.ones(critic_interpolated.size()).to(self.device1),
-    #                              create_graph=True, retain_graph=True, only_inputs=True)[0]
-#
-    #    gradients = gradients.view(real_output.size(0), -1)
-    #    gradient_penalty = (((gradients + 1e-16).norm(2, dim=1) - 1.0) ** 2).mean() * 10
-    #    # gradient_penalty.backward()
-    #    # gradients = (1. - torch.sqrt(1e-8 + torch.sum(gradients.view(gradients.size(0), -1) ** 2, dim=1)))
-    #    # gradient_penalty = (torch.mean(gradients) ** 2) * 10
-#
-    #    # final critic cost
-    #    critic_cost = torch.mean(fake_pred) - torch.mean(real_pred) + gradient_penalty
-    #    critic_cost.backward()
-#
-    #    print("total", critic_cost)
-    #    print("fake", fake_pred)
-    #    print("real_pred", real_pred)
-    #    print("both", fake_pred - real_pred)
-    #    print("gp", gradient_penalty)
-    #    print("\n")
-#
-    #    # print(fake_pred)
-    #    # print(real_pred)
-    #    # print(gradient_penalty)
-    #    # print(critic_cost)
-#
-    #    self.critic_optimizer.step()
-#
-    #    # get wasserstien distance
-    #    # fake_pred - real_pred
-#
-    #    return critic_cost.cpu().detach().item()
-#
-    #def calc_gradient_penalty(self, real_data, fake_data, gp_lambda=10):
-    #    # print(real_data.shape)
-    #    # print(fake_data.shape)
-    #    alpha = torch.rand(self.args.batch_size, 1)
-    #    alpha = alpha.expand(self.args.batch_size, int(real_data.nelement() / self.args.batch_size)).contiguous()
-    #    # out dim here
-    #    alpha = alpha.view(self.args.batch_size, self.channels, self.args.image_size, self.args.image_size)
-    #    alpha = alpha.to(self.device1)
-#
-    #    # out dim here
-    #    fake_data = fake_data.view(self.args.batch_size, self.channels, self.args.image_size, self.args.image_size)
-    #    # interpolates = alpha * real_data.detach() + ((1 - alpha) * fake_data.detach())
-    #    interpolated = (alpha * real_data + ((1 - alpha) * fake_data)).requires_grad_(True)
-    #    interpolated = interpolated.to(self.device1)
-    #    interpolated.requires_grad_(True)
-#
-    #    critic_interpolated = self.critic(interpolated)
-#
-    #    gradients = autograd.grad(outputs=critic_interpolated, inputs=interpolated,
-    #                              grad_outputs=torch.ones(critic_interpolated.size()).to(self.device1),
-    #                              create_graph=True, retain_graph=True, only_inputs=True)[0]
-#
-    #    gradients = (1. - torch.sqrt(1e-8 + torch.sum(gradients.view(gradients.size(0), -1) ** 2, dim=1)))
-    #    gradient_penalty = torch.mean(gradients) ** (1. / 2)
-#
-    #    # gradient_penalty = ((gradients.view(gradients.size(0), -1).norm(2, dim=1) - 1) ** 2) * gp_lambda
-#
-    #    return gradient_penalty * gp_lambda
-
     def initialize_nets(self):
         if self.args.multi_gpu:
             # device 2 below
@@ -316,6 +158,7 @@ class WGANGPTrainer(BaseTrainer):
             self.gen.apply(init_weights)
             self.critic.apply(init_weights)
             # self.dis_B.apply(weights_init)
+
         else:
             raise NotImplementedError('Single GPU for WGAN-GP not implemented!')
 
@@ -327,14 +170,8 @@ class WGANGPTrainer(BaseTrainer):
             self.critic.load_state_dict(torch.load(self.args.dis_A_dict))
 
     def define_optimizers(self):
-        try:  # / 3
-            self.gen_optimizer = torch.optim.Adam(self.gen.parameters(), lr=self.args.lr / 10, betas=(0.5, 0.999))
-        except AttributeError:
-            raise AttributeError("Please initialize generator optimizer...")
-        try:
-            self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
-        except AttributeError:
-            raise AttributeError("Please initialize critic optimizer...")
+        self.gen_optimizer = torch.optim.Adam(self.gen.parameters(), lr=self.args.lr / 10, betas=(0.5, 0.999))
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
 
     def define_schedulers(self):
         def lambda_rule(epoch):
@@ -427,50 +264,3 @@ class WGANGPTrainer(BaseTrainer):
             output_panel_A = 0.5 * (self.gen(input_panel_A).data + 1.0)
 
             vutils.save_image(output_panel_A.detach(), f"{self.args.output_path}/A_{i}.png")
-
-
-"""
-    | WGAN-GP train summary |
-
-Only iteration based (no epochs?)
-for iteration in iterations
-
-    Train Generator ----
-
-    Freeze Critic
-    for iter in gen_iters
-        generator.zero_grad()
-        get random noise
-        noise.requires_grad(True)
-        get fake from noise 
-        gen_cost = critic(fake)
-        backward
-        gen_cost = -gen_cost (?)
-
-    opt.step
-
-    Train Critic ----
-
-    critic.requires_grad(True)
-    for iter in critic_iters
-        critic.zero_grad
-        get random noise
-        torch.no_grad on noise (noise_detach = noise)
-        get fake from noise_detach
-
-        next data
-
-        determine flip (makes next two go vice versa)
-        get critic prediction from real data
-        get critic prediction from fake
-
-        get gradient penalty
-
-        critic_cost = critic_pred_from_real - critic_pred_from_fake + gradient_penalty
-        backward
-
-        wasserstein_distance = critic_pred_from_fake - critic_pred_from_real
-        opt.step
-
-    save model (per iteration)
-"""
