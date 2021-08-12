@@ -249,25 +249,10 @@ class CycleTrainer(BaseTrainer):
             self.dis_B.load_state_dict(torch.load(self.args.dis_B_dict))
 
     def define_optimizers(self):
-        try:
-            self.gen_A2B_optimizer = torch.optim.Adam(self.gen_A2B.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
-        except AttributeError:
-            print("Skipping gen_A2B optimizer initialization...")
-
-        try:
-            self.gen_B2A_optimizer = torch.optim.Adam(self.gen_B2A.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
-        except AttributeError:
-            print("Skipping gen_A2B optimizer initialization...")
-
-        try:
-            self.dis_A_optimizer = torch.optim.Adam(self.dis_A.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
-        except AttributeError:
-            print("Skipping gen_A2B optimizer initialization...")
-
-        try:
-            self.dis_B_optimizer = torch.optim.Adam(self.dis_B.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
-        except AttributeError:
-            print("Skipping gen_A2B optimizer initialization...")
+        self.gen_A2B_optimizer = torch.optim.Adam(self.gen_A2B.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
+        self.gen_B2A_optimizer = torch.optim.Adam(self.gen_B2A.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
+        self.dis_A_optimizer = torch.optim.Adam(self.dis_A.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
+        self.dis_B_optimizer = torch.optim.Adam(self.dis_B.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
 
     def define_schedulers(self):
         def lambda_rule(epoch):
