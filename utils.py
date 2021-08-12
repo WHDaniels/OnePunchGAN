@@ -1,112 +1,67 @@
 import time
-
+import random
 from torchvision import transforms as ts
-from nets import Generator, Discriminator
+from nets import *
+import numpy as np
+from PIL import Image
 import torch.nn as nn
 import torch
 import os
+from torch.nn import init
 
 
-def get_augmented_images(image_A, image_B, mode, new_size):
-    if mode == 'train':
+# init_weights for CycleGAN generator and discriminator
+def init_weights(net, init_type='normal', init_gain=0.02):
+    """Initialize network weights.
+    Parameters:
+        net (network)   -- network to be initialized
+        init_type (str) -- the name of an initialization method: normal | xavier | kaiming | orthogonal
+        init_gain (float)    -- scaling factor for normal, xavier and orthogonal.
+    We use 'normal' in the original pix2pix and CycleGAN paper. But xavier and kaiming might
+    work better for some applications. Feel free to try yourself.
+    """
 
-        augmentation = ts.Compose([
-            ts.RandomHorizontalFlip(p=0.05),
-            ts.RandomRotation((0, 360), fill=255),
-            ts.Resize((new_size, new_size), interpolation=ts.InterpolationMode.BICUBIC),
-            ts.ToTensor(),
-            ts.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-        )
+    def init_func(m):  # define the initialization function
+        classname = m.__class__.__name__
+        if hasattr(m, 'weight') and (classname.find('Conv') != -1 or classname.find('Linear') != -1):
+            if init_type == 'normal':
+                init.normal_(m.weight.data, 0.0, init_gain)
+            elif init_type == 'xavier':
+                init.xavier_normal_(m.weight.data, gain=init_gain)
+            elif init_type == 'kaiming':
+                init.kaiming_normal_(m.weight.data, a=0, mode='fan_in')
+            elif init_type == 'orthogonal':
+                init.orthogonal_(m.weight.data, gain=init_gain)
+            else:
+                raise NotImplementedError('initialization method [%s] is not implemented' % init_type)
+            if hasattr(m, 'bias') and m.bias is not None:
+                init.constant_(m.bias.data, 0.0)
+        elif classname.find(
+                'BatchNorm2d') != -1:  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
+            init.normal_(m.weight.data, 1.0, init_gain)
+            init.constant_(m.bias.data, 0.0)
 
-        return {'A': augmentation(image_A),
-                'B': augmentation(image_B)}
-
-    else:
-
-        augmentation = ts.Compose([
-            # ts.RandomHorizontalFlip(p=0.05),
-            # ts.RandomRotation((0, 360), fill=255),
-            ts.Resize((new_size, new_size), interpolation=ts.InterpolationMode.BICUBIC),
-            ts.ToTensor(),
-            ts.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-        )
-
-        return {'A': augmentation(image_A),
-                'B': augmentation(image_B)}
-
-
-def make_train_directories(args):
-    # make train_A and train_B directories
-    try:
-        os.mkdir(args.train_path)
-        os.mkdir(args.train_path + "\\train_A")
-        os.mkdir(args.train_path + "\\train_B")
-        print(f"Training path not found. Making at {args.train_path}")
-
-    except FileExistsError as e:
-        print(f"Training path found: {args.train_path}")
-
-    # make models directory
-    try:
-        os.mkdir(args.save_path)
-        print(f"Models path not found. Making at {args.save_path}")
-    except FileExistsError as e:
-        print(f"Models path found: {args.save_path}")
+    print('initialize network with %s' % init_type)
+    net.apply(init_func)  # apply the initialization function <init_func>
 
 
-def make_test_directories(args):
-    # make test directory
-    try:
-        os.mkdir(args.test_path)
-        print(f"Testing path not found. Making at {args.test_path}")
-    except FileExistsError as e:
-        print(f"Training path found: {args.test_path}")
-
-    # make output
-    try:
-        os.mkdir(args.output_path)
-        print(f"Results path not found. Making at {args.output_path}")
-    except FileExistsError as e:
-        print(f"Results path found: {args.output_path}")
-
-
-def initialize_nets(args, device):
-    # initialize generators and discriminators
-    gen_A2B = Generator().to(device)
-    gen_B2A = Generator().to(device)
-    dis_A = Discriminator().to(device)
-    dis_B = Discriminator().to(device)
-
-    # initialize weights to nets
-    gen_A2B.apply(weights_init)
-    gen_B2A.apply(weights_init)
-    dis_A.apply(weights_init)
-    dis_B.apply(weights_init)
-
-    # if generator or discriminator path specified, load them from directory
-    try:
-        gen_A2B.load_state_dict(torch.load(args.gen_A2B))
-        gen_B2A.load_state_dict(torch.load(args.gen_B2A))
-        dis_A.load_state_dict(torch.load(args.dis_A))
-        dis_B.load_state_dict(torch.load(args.dis_B))
-    except FileNotFoundError as e:
-        pass
-
-    return gen_A2B, gen_B2A, dis_A, dis_B
-
-
-# custom weights initialization called on generator and discriminator
+# custom weights initialization for custom generator and critic
 def weights_init(m):
-    class_name = m.__class__.__name__
-    if class_name.find('Conv') != -1:
+    # class_name = m.__class__.__name__
+    if isinstance(m, nn.Conv2d):
         nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif class_name.find('BatchNorm') != -1:
+    elif isinstance(m, nn.BatchNorm2d):
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
+    elif isinstance(m, nn.LayerNorm):
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
+    elif isinstance(m, nn.InstanceNorm2d):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
 
 def move():
-    import os
     import shutil
 
     for root, dirs, files in os.walk('E:\\One Punch Man'):  # replace the . with your starting directory
@@ -117,3 +72,50 @@ def move():
             renamed_path = os.path.join('C:\\Users\\mercm\\OneDrive\\Documents\\GitHub\\OnePunchGAN\\train\\train_B\\' +
                                         root[3:].replace('\\', '_') + '_' + str(i) + ".png")
             os.rename(new_path, renamed_path)
+
+
+def save_images(image_tensor_dict, args, epoch, i):
+    for image_tensor_item in image_tensor_dict.items():
+        image_tensor = image_tensor_item[1].data
+        image_numpy = image_tensor[0].cpu().float().numpy()  # convert it into a numpy array
+        if image_numpy.shape[0] == 1:  # grayscale to RGB
+            image_numpy = np.tile(image_numpy, (3, 1, 1))
+        # post-processing: transpose and scaling
+        image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
+        image = Image.fromarray(image_numpy.astype(np.uint8))
+        image.save(f'{args.results_path}\\epoch_{epoch}\\{i}_{image_tensor_item[0]}.png')
+
+
+def changeBN2IN(model_path):
+    model = torch.load(model_path)
+    new_model = batch_norm_to_group_norm(model)
+
+    for param in new_model.named_parameters():
+        print(param)
+
+    torch.save(new_model, './pretrained/inst_final_resnet_50_CondInst.pth')
+
+
+def batch_norm_to_group_norm(layer):
+    """Iterates over a whole model (or layer of a model) and replaces every batch norm 2D with a group norm
+
+    Args:
+        layer: model or one layer of a model like resnet34.layer1 or Sequential(), ...
+    """
+    for name, module in layer.named_modules():
+        if name:
+            try:
+                # name might be something like: model.layer1.sequential.0.conv1 --> this wont work. Except this case
+                sub_layer = getattr(layer, name)
+                if isinstance(sub_layer, torch.nn.BatchNorm2d):
+                    layer._modules[name] = torch.nn.InstanceNorm2d(sub_layer.num_features, affine=True,
+                                                                   track_running_stats=True)
+
+            except AttributeError:
+                # go deeper: set name to layer1, getattr will return layer1 --> call this func again
+                name = name.split('.')[0]
+                sub_layer = getattr(layer, name)
+                batch_norm_to_group_norm(sub_layer)
+    return layer
+
+# changeBN2IN("pretrained/final_resnet_50_CondInst.pth")
