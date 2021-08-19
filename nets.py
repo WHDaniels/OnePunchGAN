@@ -32,6 +32,31 @@ class CycleResidualBlock(nn.Module):
         return self.relu(out)
 
 
+class GenUpBlock(nn.Module):
+    def __init__(self, in_channel, concat_block):
+        super(GenUpBlock, self).__init__()
+        self.concat_block = concat_block
+
+        self.in_conv = nn.Conv2d(in_channel, in_channel * 2, 1, padding=0)
+        self.act = nn.ReLU(inplace=True)
+        self.ps = nn.PixelShuffle(upscale_factor=2)
+        self.norm = nn.GroupNorm(32, in_channel // 2)
+        # nn.InstanceNorm2d(128),
+        self.out_conv = nn.Conv2d(in_channel // 2, in_channel // 2, 3, padding=1)
+        # nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        x = x + self.concat_block
+        x = self.in_conv(x)
+        x = self.act(x)
+        x = self.ps(x)
+        x = self.norm(x)
+        x = self.act(self.out_conv(x))
+
+        return x
+
+
+# noinspection PyTypeChecker
 class Generator(nn.Module):
     """
     CycleGAN generator architecture
@@ -56,23 +81,95 @@ class Generator(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(Generator, self).__init__()
 
-        # noinspection PyTypeChecker
+        self.block1 = nn.Sequential(
+            # c7s1-64
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(input_dim, 64, 3),
+            nn.GroupNorm(32, 64),
+            # nn.InstanceNorm2d(64),
+            nn.ReLU(inplace=True),
+        )
+
+        self.block2 = nn.Sequential(
+
+            # d128
+            nn.Conv2d(64, 128, 3, stride=2, padding=1),
+            nn.GroupNorm(32, 128),
+            # nn.InstanceNorm2d(128),
+            nn.ReLU(inplace=True),
+
+        )
+
+        self.block3 = nn.Sequential(
+
+            # d256
+            nn.Conv2d(128, 256, 3, stride=2, padding=1),
+            nn.GroupNorm(32, 256),
+            nn.ReLU(inplace=True),
+
+        )
+
+        self.res_blocks = nn.Sequential(
+
+            CycleResidualBlock(256),
+            CycleResidualBlock(256),
+            CycleResidualBlock(256),
+            CycleResidualBlock(256),
+            CycleResidualBlock(256),
+            CycleResidualBlock(256),
+
+        )
+
+        self.up_block1 = nn.Sequential(
+
+            # u128
+            nn.Conv2d(256, 512, 1, padding=0),
+            nn.ReLU(inplace=True),
+            nn.PixelShuffle(upscale_factor=2),
+            nn.GroupNorm(32, 128),
+            # nn.InstanceNorm2d(128),
+            nn.Conv2d(128, 128, 3, padding=1),
+            nn.Conv2d(128, 128, 3, padding=1),
+            nn.ReLU(inplace=True),
+
+        )
+
+        self.up_block2 = nn.Sequential(
+
+            # u64
+            # nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1),
+            nn.Conv2d(128, 256, 1, padding=0),
+            nn.ReLU(inplace=True),
+            nn.PixelShuffle(upscale_factor=2),
+            nn.GroupNorm(32, 64),
+            # nn.InstanceNorm2d(64),
+            nn.Conv2d(64, 64, 3, padding=1),
+            nn.Conv2d(64, 64, 3, padding=1),
+            nn.ReLU(inplace=True),
+
+        )
+
+        self.last_conv = nn.Conv2d(64, output_dim, 1)
+        self.act = nn.Tanh()
+
         self.model = nn.Sequential(
 
             # c7s1-64
-            nn.ReflectionPad2d(3),
-            nn.Conv2d(input_dim, 64, 7),
-            nn.InstanceNorm2d(64),
+            nn.ReflectionPad2d(1),
+            nn.Conv2d(input_dim, 64, 3),
+            nn.GroupNorm(32, 64),
+            # nn.InstanceNorm2d(64),
             nn.ReLU(inplace=True),
 
             # d128
             nn.Conv2d(64, 128, 3, stride=2, padding=1),
-            nn.InstanceNorm2d(128),
+            nn.GroupNorm(32, 128),
+            # nn.InstanceNorm2d(128),
             nn.ReLU(inplace=True),
 
             # d256
             nn.Conv2d(128, 256, 3, stride=2, padding=1),
-            nn.InstanceNorm2d(256),
+            nn.GroupNorm(32, 256),
             nn.ReLU(inplace=True),
 
             # R256 x 9
@@ -82,47 +179,80 @@ class Generator(nn.Module):
             CycleResidualBlock(256),
             CycleResidualBlock(256),
             CycleResidualBlock(256),
-            CycleResidualBlock(256),
-            CycleResidualBlock(256),
-            CycleResidualBlock(256),
+            # CycleResidualBlock(256),
+            # CycleResidualBlock(256),
+            # CycleResidualBlock(256),
 
             # add a few more
-            CycleResidualBlock(256),
-            CycleResidualBlock(256),
-            CycleResidualBlock(256),
+            # CycleResidualBlock(256),
+            # CycleResidualBlock(256),
+            # CycleResidualBlock(256),
 
             # add a few more
-            CycleResidualBlock(256),
-            CycleResidualBlock(256),
-            CycleResidualBlock(256),
+            # CycleResidualBlock(256),
+            # CycleResidualBlock(256),
+            # CycleResidualBlock(256),
 
             # u128
-            nn.ConvTranspose2d(256, 128, 3, stride=2, padding=1, output_padding=1),
+            # nn.ConvTranspose2d(256, 512, 3, stride=2, padding=1, output_padding=1),
+            nn.Conv2d(256, 512, 1, padding=0),
+            nn.ReLU(inplace=True),
+            nn.PixelShuffle(upscale_factor=2),
+            nn.GroupNorm(32, 128),
+            # nn.InstanceNorm2d(128),
+            nn.Conv2d(128, 128, 3, padding=1),
+            nn.Conv2d(128, 128, 3, padding=1),
+            nn.ReLU(inplace=True),
 
             # nn.Upsample(scale_factor=2, mode='bilinear'),
             # nn.ReflectionPad2d(1),
             # nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=0),
-            nn.InstanceNorm2d(128),
-            nn.ReLU(inplace=True),
+            # nn.InstanceNorm2d(128),
+            # nn.ReLU(inplace=True),
 
             # u64
-            nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1),
+            # nn.ConvTranspose2d(128, 64, 3, stride=2, padding=1, output_padding=1),
+            nn.Conv2d(128, 256, 1, padding=0),
+            nn.ReLU(inplace=True),
+            nn.PixelShuffle(upscale_factor=2),
+            nn.GroupNorm(32, 64),
+            # nn.InstanceNorm2d(64),
+            nn.Conv2d(64, 64, 3, padding=1),
+            nn.Conv2d(64, 64, 3, padding=1),
+            nn.ReLU(inplace=True),
 
             # nn.Upsample(scale_factor=2, mode='bilinear'),
             # nn.ReflectionPad2d(1),
             # nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=0),
-            nn.InstanceNorm2d(64),
-            nn.ReLU(inplace=True),
+            # nn.InstanceNorm2d(64),
+            # nn.ReLU(inplace=True),
 
             # c7s1-64
-            nn.ReflectionPad2d(3),
-            nn.Conv2d(64, output_dim, 7),
+            # nn.ReflectionPad2d(1),
+            nn.Conv2d(64, output_dim, 1),
             nn.Tanh()
 
         )
 
     def forward(self, x):
-        return self.model(x)
+        block1 = self.block1(x)
+        block2 = self.block2(block1)
+        block3 = self.block3(block2)
+
+        res_blocks = self.res_blocks(block3)
+
+        # x = GenUpBlock(256, block3)(res_blocks)
+        x = res_blocks + block3
+        up_block1 = self.up_block1(x)
+        x = up_block1 + block2
+        up_block2 = self.up_block2(up_block1)
+        # x = GenUpBlock(128, block2)(x)
+        x = up_block2 + block1
+
+        # x = x + block1
+        x = self.act(self.last_conv(x))
+
+        return x
 
 
 class MyConvo2d(nn.Module):
@@ -434,7 +564,7 @@ class ColorNet(nn.Module):
     def __init__(self, output_dim=1):
         super(ColorNet, self).__init__()
 
-        encoder = torch.load('./pretrained/inst_final_resnet_50_CondInst.pth')
+        # encoder = torch.load('./pretrained/inst_final_resnet_50_CondInst.pth')
         # encoder = torchvision.models.resnet50(pretrained=True)
 
         # self.encoder = torchvision.models.resnet50()
@@ -446,7 +576,12 @@ class ColorNet(nn.Module):
         # for param in self.encoder.layer2.parameters():
         #     param.requires_grad = False
 
-        encoder_layers = list(encoder.children())
+        # encoder_layers = list(encoder.children())
+
+        encoder = torch.hub.load('RF5/danbooru-pretrained', 'resnet50')
+        # print(encoder)
+        # m = nn.Sequential(*list(encoder.children()))[:-2]
+        encoder_layers = list(encoder.children())[0]
 
         self.block1 = nn.Sequential(*encoder_layers[:3])
         self.block2 = nn.Sequential(*encoder_layers[3:5])
@@ -454,23 +589,23 @@ class ColorNet(nn.Module):
         self.block4 = encoder_layers[6]
         self.block5 = encoder_layers[7]
 
-        # self.bridge = nn.Sequential(
-        # nn.Conv2d(2048, 2048, kernel_size=3, padding=1),
-        # nn.ReLU(),
-        # nn.Conv2d(2048, 2048, kernel_size=3, padding=1),
-        # nn.ReLU()
-        # )
+        self.bridge = nn.Sequential(
+        nn.Conv2d(2048, 2048, kernel_size=3, padding=1),
+        nn.ReLU(),
+        )
 
         self.unet_block1 = ColorUnetBlock(2048)
         #  + 1024 if concat
-        self.unet_block2 = ColorUnetBlock(1024 + 1024, 512)
+        self.unet_block2 = ColorUnetBlock(1024, 512)
         #  + 512 if concat
-        self.unet_block3 = ColorUnetBlock(512 + 512, 256)
+        self.unet_block3 = ColorUnetBlock(512, 256)
+        self.attn1 = SelfAttention(256)
         #  + 256 if concat
-        self.unet_block4 = ColorUnetBlock(256 + 256, 64)
-        self.attn1 = SelfAttention(64)
+        self.unet_block4 = ColorUnetBlock(256, 64)
+        self.attn2 = SelfAttention(64)
         #  + 64 if concat
-        self.unet_block5 = ColorUnetBlock(64 + 64, 64)
+        self.unet_block5 = ColorUnetBlock(64, 64)
+        self.attn3 = SelfAttention(64)
         # self.attn2 = SelfAttention(64)
 
         # self.shuffle_block = nn.Sequential(
@@ -560,7 +695,7 @@ class ColorUnetBlock(nn.Module):
         self.shuf_conv = nn.Conv2d(in_channels, in_channels * 2, kernel_size=1, stride=stride, padding=0)
         self.act = nn.ReLU()
         self.upsample = nn.PixelShuffle(upscale_factor=2)
-        self.norm = nn.InstanceNorm2d(in_channels // 2, affine=True, track_running_stats=True)
+        self.norm = nn.GroupNorm(in_channels // 4, in_channels // 2, affine=True)
 
         self.conv1 = nn.Conv2d(in_channels // 2, out_channels, kernel_size=kernel_size, padding=padding)
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=padding)
@@ -569,8 +704,8 @@ class ColorUnetBlock(nn.Module):
 
         if block_to_concat is not None:
             # print('block to concat', block_to_concat.shape)
-            x = torch.cat([x, block_to_concat], dim=1)
-            ### x = x + block_to_concat
+            ### x = torch.cat([x, block_to_concat], dim=1)
+            x = x + block_to_concat
             # print('x after concat', x.shape)
 
         # print("x before anything", x.shape)
@@ -597,40 +732,46 @@ def count_parameters(model):
     # print(name, )
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-
-"""
-encoder = torch.load('./pretrained/inst_final_resnet_50.pth')
-m = nn.Sequential(*list(encoder.children())[:-2]
-encoder_layers = list(encoder.children()
+from ColorNetBackbone import get_new_model
+# encoder = torch.load('./pretrained/inst_final_resnet_50.pth')
+# encoder = get_new_model()
+# encoder.load_state_dict(torch.load('C:\\Users\\mercm\\Desktop\\pretrained\\resnet50-13306192.pth'))
+# print(encoder)
+encoder = torch.hub.load('RF5/danbooru-pretrained', 'resnet50')
+# print(encoder)
+m = nn.Sequential(*list(encoder.children()))[:-2]
+encoder_layers = list(encoder.children())[0]
 block1 = nn.Sequential(*encoder_layers[:3])
+# print("block1", block1)
 block2 = nn.Sequential(*encoder_layers[3:5])
 block3 = encoder_layers[5]
 block4 = encoder_layers[6]
 block5 = encoder_layers[7]
-print(block5
-print(block1)
-print(block2)
-print(block3)
-print(block4)
-print(block5)
+# print("encoder", count_parameters(encoder))
+# print("\ncolornet", count_parameters(ColorNet(3)))
+# print(ColorNet(3))
+# print(block5)
+# print(block1)
+# print(block2)
+# print(block3)
+# print(block4)
+# print(block5)
 
-
-
-print("block1", count_parameters(ColorNet().block1))
-print("block2", count_parameters(ColorNet().block2))
-print("block3", count_parameters(ColorNet().block3))
-print("block4", count_parameters(ColorNet().block4))
-print("bridge", count_parameters(ColorNet().block5))
-print("bridge", count_parameters(ColorNet().bridge))
-print("unet_block1", count_parameters(ColorNet().unet_block1))
-print("unet_block2", count_parameters(ColorNet().unet_block2))
-print("unet_block3", count_parameters(ColorNet().unet_block3))
-print("unet_block4", count_parameters(ColorNet().unet_block4))
-print("unet_block5", count_parameters(ColorNet().unet_block5))
-print("shuffle_block", count_parameters(ColorNet().shuffle_block))
-print("last", count_parameters(ColorNet().last))
-
-print("encoder?", count_parameters(ColorNet().encoder))
-print("\ncolornet", count_parameters(ColorNet(1)))
-print("\noriginal generator", count_parameters(Generator()))
-"""
+# print("block1", count_parameters(ColorNet().block1))
+# print("block2", count_parameters(ColorNet().block2))
+# print("block3", count_parameters(ColorNet().block3))
+# print("block4", count_parameters(ColorNet().block4))
+# print("bridge", count_parameters(ColorNet().block5))
+# print("bridge", count_parameters(ColorNet().bridge))
+# print("unet_block1", count_parameters(ColorNet().unet_block1))
+# print("unet_block2", count_parameters(ColorNet().unet_block2))
+# print("unet_block3", count_parameters(ColorNet().unet_block3))
+# print("unet_block4", count_parameters(ColorNet().unet_block4))
+# print("attn1", count_parameters(ColorNet().attn1))
+# print("unet_block5", count_parameters(ColorNet().unet_block5))
+# print("shuffle_block", count_parameters(ColorNet().shuffle_block))
+# print("last", count_parameters(ColorNet().last))
+#
+# print("encoder", count_parameters(encoder))
+# print("\ncolornet", count_parameters(ColorNet(3)))
+# print("\noriginal generator", count_parameters(Generator()))
