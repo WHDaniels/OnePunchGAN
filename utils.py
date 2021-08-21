@@ -80,10 +80,16 @@ def save_images(image_tensor_dict, args, epoch, i):
         image_numpy = image_tensor[0].cpu().float().numpy()  # convert it into a numpy array
         if image_numpy.shape[0] == 1:  # grayscale to RGB
             image_numpy = np.tile(image_numpy, (3, 1, 1))
-        # post-processing: transpose and scaling
-        image_numpy = (np.transpose(image_numpy, (1, 2, 0)) + 1) / 2.0 * 255.0
+        image_numpy = np.transpose(image_numpy, (1, 2, 0))
+        image_numpy = denormalize(image_numpy, [0.7137, 0.6628, 0.6519], [0.2970, 0.3017, 0.2979]) * 255.0
         image = Image.fromarray(image_numpy.astype(np.uint8))
         image.save(f'{args.results_path}\\epoch_{epoch}\\{i}_{image_tensor_item[0]}.png')
+
+
+def denormalize(array, mean, std):
+    array = np.array([array[:, :, n] * std[n] + mean[n] for n in range(0, 3)])
+    array = np.transpose(array, (1, 2, 0))
+    return array
 
 
 def changeBN2IN(model_path):
