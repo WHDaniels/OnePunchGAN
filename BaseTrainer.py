@@ -7,7 +7,8 @@ from PIL import Image
 import numpy as np
 from torch.utils.data import DataLoader
 
-from dataset import PanelDataset
+from dataset import PanelDataset, FinalDataset
+
 
 # torch.backends.cudnn.deterministic = True
 
@@ -17,16 +18,13 @@ class BaseTrainer:
         self.args = args
         self.channels = 3
 
-        """
         if self.args.model == 'gen':
             self.device1 = torch.device('cuda:1')
             if self.args.multi_gpu:
                 self.device2 = torch.device('cuda:1')
         else:
-        """
-
-        self.device1 = torch.device('cuda:1')
-        self.device2 = torch.device('cuda:1')
+            self.device1 = torch.device('cuda:0')
+            self.device2 = torch.device('cuda:1')
 
         self.loss_list = list()
         self.total_loss_list = list()
@@ -45,8 +43,10 @@ class BaseTrainer:
                                            dtype=torch.float32)
             self.target_fake2 = torch.full((self.args.batch_size, 1, t_size, t_size), 0, device=self.device2,
                                            dtype=torch.float32)
-
-        self.dataset = PanelDataset(self.args)
+        if self.args.model == 'final':
+            self.dataset = FinalDataset(self.args)
+        else:
+            self.dataset = PanelDataset(self.args)
 
         if self.args.mode == 'train':
             if self.args.model == 'gan':
