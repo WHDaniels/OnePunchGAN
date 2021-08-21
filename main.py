@@ -1,12 +1,11 @@
 import argparse
-import mode
 import os
-import utils
+from CycleTrainer import CycleTrainer
 from GenTrainer import GenTrainer
 from WGANGPTrainer import WGANGPTrainer
+from FinalTrainer import FinalTrainer
 
 parser = argparse.ArgumentParser()
-from CycleTrainer import CycleTrainer
 
 parser.add_argument('--model', type=str, default='cycle')
 parser.add_argument('--mode', type=str, default='train')
@@ -70,6 +69,14 @@ if __name__ == "__main__":
         trainer = WGANGPTrainer(args)
         trainer.test()
 
+    elif args.model == "final" and args.mode == 'train':
+        trainer = FinalTrainer(args)
+        trainer.train()
+
+    elif args.model == "final" and args.mode == 'test':
+        trainer = FinalTrainer(args)
+        trainer.test()
+
     else:
-        print("Please enter a valid model: \'cycle\', \'gan\', \'gen\', or \'critic\' "
+        print("Please enter a valid model: \'cycle\', \'gan\', \'gen\', or \'final\' "
               "along with a valid mode: \'train\' or \'test\'")
