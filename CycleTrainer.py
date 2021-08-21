@@ -73,6 +73,7 @@ class CycleTrainer(BaseTrainer):
 
                 # Train both generators
                 gen_A2B_loss, gen_B2A_loss = self.train_generators(batch_list)
+                gen_A2B_loss = self.train_generators(batch_list)
                 self.gen_A2B_loss_list.append(gen_A2B_loss.cpu().detach().numpy())
                 self.gen_B2A_loss_list.append(gen_B2A_loss.cpu().detach().numpy())
 
@@ -134,7 +135,8 @@ class CycleTrainer(BaseTrainer):
         self.gen_A2B_optimizer.step()
         self.gen_B2A_optimizer.step()
 
-        return gen_A2B_loss.cpu(), gen_B2A_loss.cpu()
+        # return gen_A2B_loss.cpu(), gen_B2A_loss.cpu()
+        return gen_A2B_loss.cpu()
 
     def train_discriminator_A(self, real):
         # Unfreeze discriminators
@@ -196,7 +198,14 @@ class CycleTrainer(BaseTrainer):
 
     def initialize_nets(self):
         if self.args.multi_gpu:
-            self.gen_A2B = Generator(1, 3).to(self.device1)
+            self.gen_A2B = ColorNet(3).to(self.device1)
+
+            for param in self.gen_A2B.parameters():
+                print(param)
+                # Freeze params in backbone
+                exit()
+                param.requires_grad = False
+
             self.gen_B2A = Generator(3, 1).to(self.device2)
             self.dis_A = Discriminator(1).to(self.device2)
             self.dis_B = Discriminator(3).to(self.device1)
@@ -222,9 +231,11 @@ class CycleTrainer(BaseTrainer):
             self.gen_A2B.load_state_dict(torch.load(self.args.gen_A2B_dict), strict=False)
 
         if self.args.gen_B2A_dict != '':
-
+            """
             model = torch.load(self.args.gen_B2A_dict)
 
+            del model['model.1.weight']
+            del model['model.1.bias']
             del model['model.25.weight']
             del model['model.25.bias']
             del model['model.28.weight']
@@ -239,8 +250,8 @@ class CycleTrainer(BaseTrainer):
                 if '25' in name:
                     break
                 param.requires_grad = False
-
-            # self.gen_B2A.load_state_dict(torch.load(self.args.gen_B2A_dict))
+            """
+            self.gen_B2A.load_state_dict(torch.load(self.args.gen_B2A_dict))
 
         if self.args.dis_A_dict != '':
             self.dis_A.load_state_dict(torch.load(self.args.dis_A_dict))
