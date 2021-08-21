@@ -80,12 +80,12 @@ class CustomFeatureLoss(nn.Module):
                 self.selected_out['layer3'],
                 self.selected_out['layer4']]
 
-    def forward(self, fake, target_rgb, target_greyscale):
+    def forward(self, fake, target_rgb, target_greyscale=None):
 
-        fake_to_rgb = fake.tile((3, 1, 1))
+        # fake_to_rgb = fake.tile((3, 1, 1))
 
         # need to translate greyscale image into 3 dimensional image to run through the pretrained resnet
-        train_pass = self.pretrained(fake_to_rgb)
+        train_pass = self.pretrained(fake)
         train_act = self.get_activations()
         del train_pass
 
@@ -94,10 +94,10 @@ class CustomFeatureLoss(nn.Module):
         del target_pass
 
         # L1 loss is based off of the greyscale pair
-        image_loss = self.loss(fake, target_greyscale)
+        # image_loss = self.loss(fake, target_greyscale)
 
         # feature loss is based off of the rgb pair
         feature_loss = sum([(self.loss(train_act[n], target_act[n]) * self.wgts[n])
-                            for n, _ in enumerate(train_act)]) + image_loss
+                            for n, _ in enumerate(train_act)])  # + image_loss
 
         return feature_loss
