@@ -177,7 +177,7 @@ class Generator(nn.Module):
 
         x = self.act(self.last_conv(x))
         return x
-    
+
 
 class Discriminator(nn.Module):
     """

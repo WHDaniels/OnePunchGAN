@@ -1,10 +1,11 @@
-from PIL import ImageFile
+import os
+import random
 
+from PIL import Image
+from PIL import ImageFile
 from utils import *
 from torch.utils.data import Dataset
 from torchvision import transforms as ts
-from PIL import Image
-import os
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -59,13 +60,11 @@ class PanelDataset(Dataset):
     def get_image_paths(self):
         for root, dirs, files in os.walk(self.data_path_A):
             for name in files:
-                if name.endswith('.png') or name.endswith('.jpg'):
-                    self.image_list_A.append(os.path.join(root, name))
+                self.image_list_A.append(os.path.join(root, name))
 
         for root, dirs, files in os.walk(self.data_path_B):
             for name in files:
-                if name.endswith('.png') or name.endswith('.jpg'):
-                    self.image_list_B.append(os.path.join(root, name))
+                self.image_list_B.append(os.path.join(root, name))
 
     def get_transform(self, image, min_dims, transform_seed):
         compose_list_rgb = list()
@@ -74,8 +73,8 @@ class PanelDataset(Dataset):
         if self.args.mode == 'train':
             set_seeds(transform_seed)
             compose_list_rgb += [ts.Resize(min_dims, interpolation=ts.InterpolationMode.BICUBIC)]
-            # self.set_seeds(transform_seed)
 
+            set_seeds(transform_seed)
             compose_list_greyscale += [ts.Resize(min_dims, interpolation=ts.InterpolationMode.BICUBIC)]
 
             scale = random.uniform(2, 10) / 10
@@ -89,7 +88,7 @@ class PanelDataset(Dataset):
 
                 ts.Resize((self.args.image_size, self.args.image_size), interpolation=ts.InterpolationMode.BICUBIC),
                 ts.ToTensor(),
-                # ts.RandomErasing(p=0.5, scale=(0.005, 0.1)),
+                ts.RandomErasing(p=0.5, scale=(0.005, 0.1)),
                 ts.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
             ]
 
@@ -104,28 +103,28 @@ class PanelDataset(Dataset):
                 ts.Grayscale(num_output_channels=1),
                 ts.Resize((self.args.image_size, self.args.image_size), interpolation=ts.InterpolationMode.BICUBIC),
                 ts.ToTensor(),
-                # ts.RandomErasing(p=0.5, scale=(0.005, 0.1)),
+                ts.RandomErasing(p=0.5, scale=(0.005, 0.1)),
                 ts.Normalize((0.5,), (0.5,))
             ]
-
+            set_seeds(transform_seed)
             greyscale_transform = ts.Compose(compose_list_greyscale)(image)
             return rgb_transform, greyscale_transform
 
 
 def pad_image(image):
     compose_list = list()
-    # compose_list += ts.Grayscale(num_output_channels=1)
-
     w, h = image.size
 
     if w / h > 2:
         # pad height
         pad_amount = int((w - h) * random.uniform(0.5, 1) // 2)
         compose_list += [ts.Pad(padding=(0, pad_amount, 0, pad_amount), fill=255)]
+
     if w / h < 0.5:
         # pad width
         pad_amount = int((h - w) * random.uniform(0.5, 1) // 2)
         compose_list += [ts.Pad(padding=(pad_amount, 0, pad_amount, 0), fill=255)]
+
     return compose_list
 
 
@@ -161,6 +160,7 @@ class FinalDataset(Dataset):
         try:
             self.image_A = Image.open(self.image_path_A).convert('RGB')
         except Exception as e:
+            # hacky workaround for when some files become unopenable (reason not understood at the moment, will fix)
             self.image_A = Image.open("D:\\colored\\00000ae68dab64813209eb92eea9c7eb.jpg").convert('RGB')
 
         min_dims = (self.image_A.size[0], self.image_A.size[1])
@@ -168,14 +168,16 @@ class FinalDataset(Dataset):
         if self.args.mode == 'train':
             image_B_reg_norm = self.get_transforms(self.image_A, min_dims, transform_seed)
             return {'real_B_reg_norm': image_B_reg_norm}
-                    # 'real_B_pre_norm': image_B_pre_norm}
 
         else:
             image_B = self.get_transforms(self.image_A, min_dims, transform_seed)
             return {'real_B': image_B}
 
     def __len__(self):
-        return len(self.image_list_A) // self.args.batch_size
+        if self.args.mode == 'train':
+            return len(self.image_list_A) // (self.args.batch_size * 6)
+        else:
+            return len(self.image_list_A)
 
     def get_image_paths(self):
         for root, dirs, files in os.walk(self.data_path_A):
@@ -189,19 +191,12 @@ class FinalDataset(Dataset):
         if self.args.mode == 'train':
             set_seeds(transform_seed)
             compose_list += pad_image(image)
-            # set_seeds(transform_seed)
 
-            if random.randint(0, 1):
-                scale = random.uniform(7, 10) / 10
-            else:
-                scale = random.uniform(5, 9) / 10
+            scale = random.uniform(5, 10) / 10
 
             crop_area = (int(min_dims[1] * scale), int(min_dims[0] * scale))
 
             compose_list += [
-                # ts.RandomEqualize(),
-                # ts.RandomAutocontrast(),
-                # ts.RandomAdjustSharpness(sharpness_factor=2),
                 ts.RandomHorizontalFlip(p=0.5),
                 ts.RandomRotation(25, fill=255),
                 ts.RandomPerspective(distortion_scale=0.33, p=0.5, fill=255),
@@ -213,17 +208,14 @@ class FinalDataset(Dataset):
 
             compose_list += [
                 ts.RandomCrop(crop_area),
+                ts.RandomErasing(p=0.5, scale=(0.005, 0.1)),
                 ts.Resize((self.args.image_size, self.args.image_size), interpolation=ts.InterpolationMode.BICUBIC),
                 ts.ToTensor(),
             ]
 
-            # compose_list_A, compose_list_B = compose_list.copy(), compose_list.copy()
             compose_list += [ts.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])]
-            # compose_list_B += [ts.Normalize(mean=[0.7137, 0.6628, 0.6519], std=[0.2970, 0.3017, 0.2979])]
-
-            # self.set_seeds(transform_seed)
             transform = ts.Compose(compose_list)(image)
-            # transform_B = ts.Compose(compose_list_B)(image)
+
             return transform
 
         else:
@@ -231,7 +223,7 @@ class FinalDataset(Dataset):
             compose_list += [
                 ts.Resize((self.args.image_size, self.args.image_size), interpolation=ts.InterpolationMode.BICUBIC),
                 ts.ToTensor(),
-                ts.Normalize(mean=[0.7137, 0.6628, 0.6519], std=[0.2970, 0.3017, 0.2979])
+                ts.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
             ]
 
             transform = ts.Compose(compose_list)(image)
