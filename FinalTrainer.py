@@ -1,14 +1,14 @@
-import os
-import torch
+from utils import save_images, init_weights, UnNormalize
+from nets import ColorNet, Discriminator, Generator
+from torchvision import transforms as ts
+from matplotlib import pyplot as plt
+from BaseTrainer import BaseTrainer
+import torchvision.utils as vutils
+from image_pool import ImagePool
 from time import perf_counter
 from torch import nn
-from image_pool import ImagePool
-import torchvision.utils as vutils
-from BaseTrainer import BaseTrainer
-from matplotlib import pyplot as plt
-from torchvision import transforms as ts
-from nets import ColorNet, Discriminator, Generator
-from utils import save_images, init_weights, UnNormalize
+import torch
+import os
 
 
 class FinalTrainer(BaseTrainer):
@@ -50,8 +50,8 @@ class FinalTrainer(BaseTrainer):
                 with torch.no_grad():
                     self.real_A_norm = self.gen_B2A(real_B_reg_norm).detach()
 
-                    # normalize input image for inputting to pretrained backbone network
-                self.real_A = self.normalize_to_pretrained().to(self.device2)
+                # normalize input image for inputting to pretrained backbone network
+                self.real_A = self.normalize_to_pretrained()
 
                 # Train generator
                 gen_A2B_loss = self.train_generators(real_B_reg_norm2, i, epoch)
@@ -98,8 +98,10 @@ class FinalTrainer(BaseTrainer):
             total_epochs = self.args.epochs + self.args.decay_epochs
             print(f"\nDataset passes: {epochs / total_epochs}")
             if epochs > self.args.decay_epochs:
-                print(f"Discriminator learning rate: {((self.args.decay_epochs - (epochs - self.args.decay_epochs)) / self.args.decay_epochs) * self.args.lr}")
-                print(f"Generator learning rate: {((self.args.decay_epochs - (epochs - self.args.decay_epochs)) / self.args.decay_epochs) * self.args.lr / 4}\n")
+                print(
+                    f"Discriminator learning rate: {((self.args.decay_epochs - (epochs - self.args.decay_epochs)) / self.args.decay_epochs) * self.args.lr}")
+                print(
+                    f"Generator learning rate: {((self.args.decay_epochs - (epochs - self.args.decay_epochs)) / self.args.decay_epochs) * self.args.lr / 4}\n")
             print("cycle_BAB_loss", cycle_BAB_loss.detach().cpu())
             print("gen_A2B_loss", gen_A2B_loss.detach().cpu(), "\n")
 

@@ -1,16 +1,12 @@
-import os
-from time import perf_counter
-
-import torch
-from PIL import Image
-
-import numpy as np
-from torch.utils.data import DataLoader
-
 from dataset import PanelDataset, FinalDataset
+from torch.utils.data import DataLoader
+from time import perf_counter
+from PIL import Image
+import numpy as np
+import torch
+import os
 
-
-# torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = True
 
 
 class BaseTrainer:
@@ -24,26 +20,29 @@ class BaseTrainer:
                 self.device2 = torch.device('cuda:1')
         else:
             self.device1 = torch.device('cuda:0')
-            self.device2 = torch.device('cuda:1')
+            self.device2 = torch.device('cuda:0')
 
-        self.loss_list = list()
-        self.total_loss_list = list()
+        self.loss_list, self.total_loss_list = list(), list()
         self.gen_A2B_loss_list, self.gen_B2A_loss_list = list(), list()
         self.dis_A_loss_list, self.dis_B_loss_list = list(), list()
+        self.avg_gen_loss, self.avg_dis_loss = list(), list()
 
-        # creating targets (using label softening)
-        t_size = 30
-        self.target_real1 = torch.full((self.args.batch_size, 1, t_size, t_size), 0.9, device=self.device1,
+        # creating targets
+        # t_size = int((self.args.image_size / 64) ** 2)
+        t_size = 14
+
+        self.target_real1 = torch.full((self.args.batch_size, 1, t_size, t_size), 1, device=self.device1,
                                        dtype=torch.float32)
         self.target_fake1 = torch.full((self.args.batch_size, 1, t_size, t_size), 0, device=self.device1,
                                        dtype=torch.float32)
 
         if self.args.multi_gpu:
-            self.target_real2 = torch.full((self.args.batch_size, 1, t_size, t_size), 0.9, device=self.device2,
+            self.target_real2 = torch.full((self.args.batch_size, 1, t_size, t_size), 1, device=self.device2,
                                            dtype=torch.float32)
             self.target_fake2 = torch.full((self.args.batch_size, 1, t_size, t_size), 0, device=self.device2,
                                            dtype=torch.float32)
-        if self.args.model == 'final':
+
+        if 'final' in self.args.model:
             self.dataset = FinalDataset(self.args)
         else:
             self.dataset = PanelDataset(self.args)
@@ -54,7 +53,7 @@ class BaseTrainer:
                                          shuffle=self.args.shuffle, pin_memory=True, drop_last=True)
             else:
                 self.loader = DataLoader(self.dataset, self.args.batch_size, shuffle=self.args.shuffle,
-                                         pin_memory=True, drop_last=True)
+                                         pin_memory=True, drop_last=True, num_workers=1)
 
         else:
             self.loader = DataLoader(self.dataset, args.batch_size)
@@ -100,7 +99,7 @@ class BaseTrainer:
             os.mkdir(self.args.test_path)
             print(f"Testing path not found. Making at {self.args.test_path}")
         except FileExistsError:
-            print(f"Training path found: {self.args.test_path}")
+            print(f"Test path found: {self.args.test_path}")
 
         # make output
         try:
@@ -130,7 +129,7 @@ class BaseTrainer:
         # Give a training ETA
         end = perf_counter()
 
-        if i % 50 == 0:
+        if i % 75 == 0:
             seconds_per_batch = end - start
             print('-' * 50)
             print(f"\nTime per batch: {seconds_per_batch} seconds")

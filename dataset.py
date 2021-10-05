@@ -1,11 +1,9 @@
-import os
-import random
-
-from PIL import Image
-from PIL import ImageFile
-from utils import *
-from torch.utils.data import Dataset
 from torchvision import transforms as ts
+from torch.utils.data import Dataset
+from PIL import ImageFile
+from PIL import Image
+from utils import *
+import random
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -113,6 +111,7 @@ class PanelDataset(Dataset):
 
 def pad_image(image):
     compose_list = list()
+
     w, h = image.size
 
     if w / h > 2:
@@ -198,24 +197,23 @@ class FinalDataset(Dataset):
 
             compose_list += [
                 ts.RandomHorizontalFlip(p=0.5),
-                ts.RandomRotation(25, fill=255),
-                ts.RandomPerspective(distortion_scale=0.33, p=0.5, fill=255),
+                ts.RandomRotation(45, fill=255),
+                ts.RandomPerspective(distortion_scale=0.667, p=0.5, fill=255),
             ]
 
-            if random.random() > 0.8:
+            if random.random() > 0.75:
                 filter_size = random.choice([3, 5])
                 compose_list += [ts.GaussianBlur(kernel_size=(filter_size, filter_size))]
 
             compose_list += [
                 ts.RandomCrop(crop_area),
-                ts.RandomErasing(p=0.5, scale=(0.005, 0.1)),
                 ts.Resize((self.args.image_size, self.args.image_size), interpolation=ts.InterpolationMode.BICUBIC),
                 ts.ToTensor(),
+                ts.RandomErasing(p=0.5, scale=(0.005, 0.1)),
             ]
 
             compose_list += [ts.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])]
             transform = ts.Compose(compose_list)(image)
-
             return transform
 
         else:

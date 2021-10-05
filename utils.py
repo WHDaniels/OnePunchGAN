@@ -1,13 +1,10 @@
-import time
-import random
-from torchvision import transforms as ts
-from nets import *
-import numpy as np
-from PIL import Image
+from torch.nn.init import xavier_uniform_
+import torchvision.utils as vutils
+from torch.nn import init
 import torch.nn as nn
+import numpy as np
 import torch
 import os
-from torch.nn import init
 
 
 # init_weights for CycleGAN generator and discriminator
@@ -61,10 +58,16 @@ def weights_init(m):
         nn.init.constant_(m.bias.data, 0)
 
 
+def init_disc_weights(m):
+    if type(m) == nn.Linear or type(m) == nn.Conv2d:
+        xavier_uniform_(m.weight)
+        m.bias.data.fill_(0.)
+
+
 def move():
     import shutil
 
-    for root, dirs, files in os.walk('E:\\One Punch Man'):  # replace the . with your starting directory
+    for root, dirs, files in os.walk('E:\\One Punch Man'):
         for i, file in enumerate(files):
             path_file = os.path.join(root, file)
             shutil.copy2(path_file, 'C:\\Users\\mercm\\OneDrive\\Documents\\GitHub\\OnePunchGAN\\train\\train_B')
@@ -77,19 +80,75 @@ def move():
 def save_images(image_tensor_dict, args, epoch, i):
     for image_tensor_item in image_tensor_dict.items():
         image_tensor = image_tensor_item[1].data
+        # print(image_tensor_item[0], image_tensor)
+        if image_tensor_item[0] == 'almost_real_A':
+            image = UnNormalize([0.7137, 0.6628, 0.6519], [0.2970, 0.3017, 0.2979])(image_tensor)
+        else:
+            image = UnNormalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])(image_tensor)
+        # image = 0.5 * (image_tensor_item[1].data + 1.0)
+        # output_panel_B = 0.5 * (self.gen_B2A(input_panel_B).data + 1.0)
+
+        vutils.save_image(image.detach(), f'{args.results_path}\\epoch_{epoch}\\{i}_{image_tensor_item[0]}.png')
+        # vutils.save_image(output_panel_B.detach(), f"{self.args.output_path}/B_{i}.png")
+
+        """
         image_numpy = image_tensor[0].cpu().float().numpy()  # convert it into a numpy array
         if image_numpy.shape[0] == 1:  # grayscale to RGB
             image_numpy = np.tile(image_numpy, (3, 1, 1))
         image_numpy = np.transpose(image_numpy, (1, 2, 0))
+        # if image_tensor[0] == 'fake_B':
+            # image_numpy = denormalize(image_numpy, [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]) * 255.0
+        # else:
         image_numpy = denormalize(image_numpy, [0.7137, 0.6628, 0.6519], [0.2970, 0.3017, 0.2979]) * 255.0
         image = Image.fromarray(image_numpy.astype(np.uint8))
         image.save(f'{args.results_path}\\epoch_{epoch}\\{i}_{image_tensor_item[0]}.png')
+        """
+
+
+class UnNormalize(object):
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+        Returns:
+            Tensor: Normalized image.
+        """
+        for t, m, s in zip(tensor, self.mean, self.std):
+            t.mul_(s).add_(m)
+        return tensor
+
+
+class Normalize(object):
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+        Returns:
+            Tensor: Normalized image.
+        """
+        for t, m, s in zip(tensor, self.mean, self.std):
+            t.sub_(m).div_(s)
+        return tensor
 
 
 def denormalize(array, mean, std):
     array = np.array([array[:, :, n] * std[n] + mean[n] for n in range(0, 3)])
     array = np.transpose(array, (1, 2, 0))
     return array
+
+
+def to_greyscale(tensor):
+    r_tensor, g_tensor, b_tensor = tensor[0][0] * 0.3, tensor[0][1] * 0.59, tensor[0][2] * 0.11
+    grey_tensor = r_tensor + g_tensor + b_tensor
+    return grey_tensor
 
 
 def changeBN2IN(model_path):

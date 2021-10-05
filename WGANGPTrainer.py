@@ -1,15 +1,15 @@
-import os
-from time import perf_counter
+# NOT USED IN FINAL MODEL
 
-import torch
-from torch import autograd
-
-from BaseTrainer import BaseTrainer
 from nets import ColorNet, Critic, Generator, Discriminator
+from utils import weights_init, init_weights
 from torchvision import utils as vutils
 from matplotlib import pyplot as plt
+from BaseTrainer import BaseTrainer
+from time import perf_counter
+from torch import autograd
+import torch
+import os
 
-from utils import weights_init, init_weights
 
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
@@ -121,7 +121,6 @@ class WGANGPTrainer(BaseTrainer):
             self.critic.zero_grad()
 
             with torch.no_grad():
-                # real_input here is 3-channel image
                 gen_input = real_input  # totally freeze G, training D
             self.fake_output = self.gen(gen_input).detach()
 
@@ -151,7 +150,7 @@ class WGANGPTrainer(BaseTrainer):
             self.critic_optimizer.step()
             total_critic_loss += critic_cost.cpu().detach().item()
 
-            return total_critic_loss
+        return total_critic_loss
 
     def initialize_nets(self):
         if self.args.multi_gpu:
@@ -187,11 +186,11 @@ class WGANGPTrainer(BaseTrainer):
 
     def get_results(self, i, epoch, real_A, real_B):
         """
-        Show results after a multiple of iterations.
-        """
+# Show results after a multiple of iterations.
+"""
         tensor_dict = {}
 
-        if i % 5 == 0:
+        if i % 50 == 0:
             # show results on test per epoch
             try:
                 os.mkdir(os.getcwd() + f'\\results\\epoch_{epoch}')
@@ -211,10 +210,11 @@ class WGANGPTrainer(BaseTrainer):
 
     def save_training(self, epoch):
         """
-        Update schedulers, save state_dict of networks, and plot loss metrics.
-        """
+# Update schedulers, save state_dict of networks, and plot loss metrics.
+"""
         # update learning rates
         self.gen_scheduler.step()
+        self.critic_scheduler.step()
 
         # checkpoints
         torch.save(self.gen.state_dict(), f"{self.args.save_path}/gan_gen_epoch_{epoch}.pth")
@@ -244,8 +244,8 @@ class WGANGPTrainer(BaseTrainer):
 
     def test(self):
         """
-        Test inputs to trained model.
-        """
+# Test inputs to trained model.
+"""
         print("Making directories...")
         self.make_test_directories()
 

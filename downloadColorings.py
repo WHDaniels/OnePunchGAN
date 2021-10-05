@@ -61,13 +61,13 @@ def cleanDownloads():
 
 
 if __name__ == '__main__':
-    coloredIDs = pickle.load(open('data//list2//coloredList2.p', 'rb'))
-    artIDs = pickle.load(open('data//list2//artList2.p', 'rb'))
+    coloredIDs = pickle.load(open('data//list3//coloredList3.p', 'rb'))
+    artIDs = pickle.load(open('data//list3//artList3.p', 'rb'))
 
     reddit = praw.Reddit()
     authUser = reddit.user.me()
 
     print(len(coloredIDs))
-    download(coloredIDs, "E://OPM Colorings//downloads2//")
+    download(coloredIDs, "E://OPM//OPM Colorings//downloads3//")
     print(len(artIDs))
-    download(artIDs, "E://OPM Colorings//art_downloads2//")
+    download(artIDs, "E://OPM//OPM Colorings//art_downloads3//")

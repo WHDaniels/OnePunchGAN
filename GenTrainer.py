@@ -1,13 +1,12 @@
-import os
-from time import perf_counter
 from torchvision import utils as vutils
-import torch
 from matplotlib import pyplot as plt
+from nets import ColorNet, Generator
 from BaseTrainer import BaseTrainer
 from loss import CustomFeatureLoss
-from nets import ColorNet
-import matplotlib
-from importlib import reload
+from time import perf_counter
+import torchvision
+import torch
+import os
 
 
 class GenTrainer(BaseTrainer):
@@ -43,6 +42,14 @@ class GenTrainer(BaseTrainer):
                     real_B_rgb = batch['B_rgb'].to(self.device2)
                     real_A_greyscale = batch['A_greyscale'].to(self.device1)
                     real_B_greyscale = batch['B_greyscale'].to(self.device2)
+
+                    # print(real_B1)
+                    gen_image = torch.squeeze(real_A_rgb, dim=0)
+                    # print(gen_image)
+                    gen_image = torchvision.transforms.ToPILImage()(gen_image)
+
+                    gen_image.show()
+                    exit(1)
 
                 else:
                     real_A_rgb = batch['A_rgb'].to(self.device1)
@@ -93,17 +100,15 @@ class GenTrainer(BaseTrainer):
     def initialize_nets(self):
         if self.args.multi_gpu:
             # better to put the model on non-primary gpu
-            self.gen_A2B = ColorNet(self.output_dim).to(self.device2)
+            # self.gen_A2B = ColorNet(self.output_dim).to(self.device2)
+            self.gen_A2B = Generator(3, 1).to(self.device2)
         else:
             self.gen_A2B = ColorNet(self.output_dim).to(self.device1)
 
     def load_weights(self):
         if self.args.gen_A2B_dict != '':
-            #try:
             self.gen_A2B.load_state_dict(torch.load(self.args.gen_A2B_dict), strict=False)
-            #except FileNotFoundError:
-                #print("Something went wrong with loading weights!")
-                #exit(1)
+
 
     def define_optimizers(self):
         self.gen_A2B_optimizer = torch.optim.Adam(self.gen_A2B.parameters(), lr=self.args.lr, betas=(0.5, 0.999))
@@ -113,7 +118,6 @@ class GenTrainer(BaseTrainer):
             return 1.0 - max(0, epoch - self.args.epochs) / float(self.args.decay_epochs + 1)
 
         self.gen_A2B_scheduler = torch.optim.lr_scheduler.LambdaLR(self.gen_A2B_optimizer, lr_lambda=lambda_rule)
-        # self.gen_A2B_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.gen_A2B_optimizer, gamma=0.68383)
 
     def get_results(self, i, epoch, real_A1, real_B1):
         """
@@ -188,9 +192,9 @@ class GenTrainer(BaseTrainer):
         for i, batch in enumerate(self.loader):
             # get batch data
             if self.args.multi_gpu:
-                input_panel_A = batch['A'].to(self.device2)
+                input_panel_A = batch['A_rgb'].to(self.device2)
             else:
-                input_panel_A = batch['A'].to(self.device1)
+                input_panel_A = batch['A_rgb'].to(self.device1)
 
             output_panel_A = 0.5 * (self.gen_A2B(input_panel_A).data + 1.0)
 

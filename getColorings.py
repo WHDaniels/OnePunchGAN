@@ -1,18 +1,11 @@
-"""
-1) Get all submissions in subreddit, adding their praw objects to a list if the flair is 'coloring'
-2) See how long list is (if too small can't really continue project)
-3) Store praw objects (pickle maybe)
-
-"""
+from psaw import PushshiftAPI
+import datetime as dt
+import praw.models
 import pickle
 import time
 
-from psaw import PushshiftAPI
-import praw.models
-import datetime as dt
 
-
-def collectIDs(startDate=dt.datetime(2021, 5, 20), subreddit='onepunchman', interval=250000):
+def collectIDs(startDate=dt.datetime(2021, 7, 9), subreddit='onepunchman', interval=250000):
     """
     Collects IDs of every reddit post on the specified subreddit.
     :param startDate: Day you want to start collecting IDs from.
@@ -22,7 +15,7 @@ def collectIDs(startDate=dt.datetime(2021, 5, 20), subreddit='onepunchman', inte
     """
 
     startTime = int(startDate.timestamp())
-    endTime = int(dt.datetime(2021, 4, 7).timestamp())
+    endTime = int(dt.datetime(2021, 5, 20).timestamp())
     lastChunkGap = False
     gapList = list()
     idList = list()
@@ -58,12 +51,12 @@ def collectIDs(startDate=dt.datetime(2021, 5, 20), subreddit='onepunchman', inte
         startTime = stopTime
         i += 1
 
-    pickle.dump(idList, open('data//idList2.p', 'wb'))
-    pickle.dump(gapList, open('data//gapList2.p', 'wb'))
+    pickle.dump(idList, open('data//idList3.p', 'wb'))
+    pickle.dump(gapList, open('data//gapList3.p', 'wb'))
 
 
 def seeGaps():
-    gapList = pickle.load(open('data//gapList2.p', 'rb'))
+    gapList = pickle.load(open('data//gapList3.p', 'rb'))
     for x in gapList:
         print(x)
 
@@ -82,22 +75,22 @@ def makeIDLists(idFullList):
         if 'colo' in submission.title.lower():
             print("Coloring found")
             coloredList.append(idFullList[n])
-            pickle.dump(coloredList, open('data//list2//coloredList2.p', 'wb'))
+            pickle.dump(coloredList, open('data//list3//coloredList3.p', 'wb'))
 
         elif submission.link_flair_text is not None:
             if 'colo' in submission.link_flair_text.lower():
                 print("Coloring found")
                 coloredList.append(idFullList[n])
-                pickle.dump(coloredList, open('data//list2//coloredList2.p', 'wb'))
+                pickle.dump(coloredList, open('data//list3//coloredList3.p', 'wb'))
             elif 'art' in submission.link_flair_text.lower():
                 print("Art found")
                 artList.append(idFullList[n])
-                pickle.dump(artList, open('data//list2//artList2.p', 'wb'))
+                pickle.dump(artList, open('data//list3//artList3.p', 'wb'))
 
         elif submission.is_original_content:
             print("OC found")
             OC_list.append(idFullList[n])
-            pickle.dump(OC_list, open('data//list2//OC_list2.p', 'wb'))
+            pickle.dump(OC_list, open('data//list3//OC_list3.p', 'wb'))
 
         time.sleep(0.8)
 
@@ -109,26 +102,20 @@ def makeIDLists(idFullList):
 def getID_after(ID, idList):
     for n, entry in enumerate(idList):
         if entry == ID:
-            for post in idList[n+50:n+500]:
+            for post in idList[n + 50:n + 500]:
                 print(post)
 
 
 if __name__ == '__main__':
-
     api = PushshiftAPI()
 
     # get credentials from ini
     reddit = praw.Reddit()
     authUser = reddit.user.me()
 
-    # collectIDs()
-    idFullList = pickle.load(open('data//idList2.p', 'rb'))
+    collectIDs()
+    idFullList = pickle.load(open('data//idList3.p', 'rb'))
     makeIDLists(idFullList)
 
     # idColoredList = pickle.load(open('data//coloredList.p', 'rb'))
-
-    # what else to check for?
-    # 1) key words in title: coloring, color, colored, colour, colouring, coloured, etc
-    # 2) hmfpdp
-
     # seeGaps()

@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.nn.utils import spectral_norm
 
 
 class CycleResidualBlock(nn.Module):
@@ -35,7 +34,6 @@ class CycleResidualBlock(nn.Module):
 class Generator(nn.Module):
     """
     CycleGAN generator architecture
-
     c7s1-64 --> 7x7 Convolution-InstanceNorm_ReLU layer, 64 filters, stride 1
     d128 --> 3x3 Convolution-InstanceNorm_ReLU layer, 128 filters, stride 2, reflection padding
     d256 --> 3x3 Convolution-InstanceNorm_ReLU layer, 256 filters, stride 2, reflection padding
@@ -60,14 +58,14 @@ class Generator(nn.Module):
             # c7s1-64
             nn.ReflectionPad2d(1),
             nn.Conv2d(input_dim, 64, 3),
-            nn.InstanceNorm2d(64),
+            nn.GroupNorm(32, 64),
             nn.ReLU(inplace=True),
         )
 
         self.block2 = nn.Sequential(
             # d128
             nn.Conv2d(64, 128, 3, stride=2, padding=1),
-            nn.InstanceNorm2d(128),
+            nn.GroupNorm(32, 128),
             nn.ReLU(inplace=True),
         )
 
@@ -92,7 +90,7 @@ class Generator(nn.Module):
             nn.Conv2d(256, 512, 1, padding=0),
             nn.ReLU(inplace=True),
             nn.PixelShuffle(upscale_factor=2),
-            nn.InstanceNorm2d(128),
+            nn.GroupNorm(32, 128),
             nn.Conv2d(128, 128, 3, padding=1),
             nn.Conv2d(128, 128, 3, padding=1),
             nn.ReLU(inplace=True),
@@ -103,7 +101,7 @@ class Generator(nn.Module):
             nn.Conv2d(128, 256, 1, padding=0),
             nn.ReLU(inplace=True),
             nn.PixelShuffle(upscale_factor=2),
-            nn.InstanceNorm2d(64),
+            nn.GroupNorm(32, 64),
             nn.Conv2d(64, 64, 3, padding=1),
             nn.Conv2d(64, 64, 3, padding=1),
             nn.ReLU(inplace=True),
@@ -113,21 +111,20 @@ class Generator(nn.Module):
         self.act = nn.Tanh()
 
         self.model = nn.Sequential(
-
             # c7s1-64
             nn.ReflectionPad2d(1),
             nn.Conv2d(input_dim, 64, 3),
-            nn.InstanceNorm2d(64),
+            nn.GroupNorm(32, 64),
             nn.ReLU(inplace=True),
 
             # d128
             nn.Conv2d(64, 128, 3, stride=2, padding=1),
-            nn.InstanceNorm2d(128),
+            nn.GroupNorm(32, 128),
             nn.ReLU(inplace=True),
 
             # d256
             nn.Conv2d(128, 256, 3, stride=2, padding=1),
-            nn.InstanceNorm2d(256),
+            nn.GroupNorm(32, 256),
             nn.ReLU(inplace=True),
 
             # R256 x 9
@@ -142,7 +139,7 @@ class Generator(nn.Module):
             nn.Conv2d(256, 512, 1, padding=0),
             nn.ReLU(inplace=True),
             nn.PixelShuffle(upscale_factor=2),
-            nn.InstanceNorm2d(128),
+            nn.GroupNorm(32, 128),
             nn.Conv2d(128, 128, 3, padding=1),
             nn.Conv2d(128, 128, 3, padding=1),
             nn.ReLU(inplace=True),
@@ -151,7 +148,7 @@ class Generator(nn.Module):
             nn.Conv2d(128, 256, 1, padding=0),
             nn.ReLU(inplace=True),
             nn.PixelShuffle(upscale_factor=2),
-            nn.InstanceNorm2d(64),
+            nn.GroupNorm(32, 64),
             nn.Conv2d(64, 64, 3, padding=1),
             nn.Conv2d(64, 64, 3, padding=1),
             nn.ReLU(inplace=True),
@@ -159,7 +156,6 @@ class Generator(nn.Module):
             # c7s1-64
             nn.Conv2d(64, output_dim, 1),
             nn.Tanh()
-
         )
 
     def forward(self, x):
@@ -171,11 +167,12 @@ class Generator(nn.Module):
 
         x = res_blocks + block3
         up_block1 = self.up_block1(x)
-        x = up_block1 + block2
-        up_block2 = self.up_block2(x)
+        # x = up_block1 + block2
+        up_block2 = self.up_block2(up_block1)
         x = up_block2 + block1
 
         x = self.act(self.last_conv(x))
+
         return x
 
 
@@ -226,6 +223,115 @@ class Discriminator(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+class MyConvo2d(nn.Module):
+    def __init__(self, input_dim, output_dim, kernel_size, bias=True):
+        super(MyConvo2d, self).__init__()
+        self.padding = int((kernel_size - 1) / 2)
+        self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, padding=self.padding, bias=bias)
+
+    def forward(self, x):
+        output = self.conv(x)
+        return output
+
+
+class ConvMeanPool(nn.Module):
+    def __init__(self, input_dim, output_dim, kernel_size):
+        super(ConvMeanPool, self).__init__()
+        self.conv = MyConvo2d(input_dim, output_dim, kernel_size)
+
+    def forward(self, x):
+        output = self.conv(x)
+        output = (output[:, :, ::2, ::2] + output[:, :, 1::2, ::2] + output[:, :, ::2, 1::2] + output[:, :, 1::2,
+                                                                                               1::2]) / 4
+        return output
+
+
+class MeanPoolConv(nn.Module):
+    def __init__(self, input_dim, output_dim, kernel_size):
+        super(MeanPoolConv, self).__init__()
+        self.conv = MyConvo2d(input_dim, output_dim, kernel_size)
+
+    def forward(self, x):
+        output = x
+        output = (output[:, :, ::2, ::2] + output[:, :, 1::2, ::2] + output[:, :, ::2, 1::2] + output[:, :, 1::2,
+                                                                                               1::2]) / 4
+        output = self.conv(output)
+        return output
+
+
+class ResidualBlock(nn.Module):
+    def __init__(self, input_dim, output_dim, kernel_size, hw):
+        super(ResidualBlock, self).__init__()
+
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.kernel_size = kernel_size
+        self.relu1 = nn.ReLU()
+        self.relu2 = nn.ReLU()
+        self.ln1 = nn.LayerNorm([input_dim, hw, hw])
+        self.ln2 = nn.LayerNorm([input_dim, hw, hw])
+        # self.in1 = nn.InstanceNorm2d(input_dim)
+        # self.in2 = nn.InstanceNorm2d(input_dim)
+
+        self.conv_shortcut = MeanPoolConv(input_dim, output_dim, kernel_size=1)
+        self.conv_1 = MyConvo2d(input_dim, input_dim, kernel_size=kernel_size, bias=False)
+        self.conv_2 = ConvMeanPool(input_dim, output_dim, kernel_size=kernel_size)
+
+    def forward(self, x):
+        shortcut = self.conv_shortcut(x)
+
+        output = x
+        output = self.ln1(output)
+        output = self.relu1(output)
+        output = self.conv_1(output)
+        output = self.ln2(output)
+        output = self.relu2(output)
+        output = self.conv_2(output)
+
+        return shortcut + output
+
+
+# https://github.com/jalola/improved-wgan-pytorch
+class Critic(nn.Module):
+
+    # noinspection PyTypeChecker
+    def __init__(self, dim=64, output_dim=3):
+        super(Critic, self).__init__()
+
+        self.dim = dim
+        self.ssize = dim // 16
+        # self.ssize = self.dim // 64
+        self.output_dim = output_dim
+
+        # out dim
+        self.conv1 = MyConvo2d(self.output_dim, self.dim, 3)
+
+        self.rb1 = ResidualBlock(self.dim, 2 * self.dim, 3, self.dim)
+        self.rb2 = ResidualBlock(2 * self.dim, 4 * self.dim, 3, self.dim // 2)
+        self.attn1 = SelfAttention(4 * self.dim)
+        self.rb3 = ResidualBlock(4 * self.dim, 8 * self.dim, 3, self.dim // 4)
+        self.attn2 = SelfAttention(8 * self.dim)
+        self.rb4 = ResidualBlock(8 * self.dim, 8 * self.dim, 3, self.dim // 8)
+        # self.rb5 = ResidualBlock(16 * self.dim, 16 * self.dim, 3)
+        # self.rb6 = ResidualBlock(16 * self.dim, 16 * self.dim, 3)
+
+        self.ln1 = nn.Linear(self.ssize * self.ssize * 8 * self.dim, 1)
+
+    def forward(self, x):
+        output = x.contiguous()
+        # out dim
+        output = output.view(-1, self.output_dim, self.dim, self.dim)
+        output = self.conv1(output)
+        output = self.rb1(output)
+        output = self.rb2(output)
+        output = self.attn1(output)
+        output = self.rb3(output)
+        output = self.attn2(output)
+        output = self.rb4(output)
+        output = output.view(-1, self.ssize * self.ssize * 8 * self.dim)
+        output = self.ln1(output)
+        output = output.view(-1)
+        return output
 
 # noinspection PyTypeChecker
 class SelfAttention(nn.Module):
@@ -245,78 +351,7 @@ class SelfAttention(nn.Module):
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, x):
-        """
-        bs, C, width, height = x.size()
-        print("x size", x.size())
-
-        query = self.query_conv(x).view(bs, -1, width * height).permute(0, 2, 1)  # B * N * C
-        print("query size", query.size())
-
-        key = self.pool(self.key_conv(x))
-        key = key.view(bs, -1, width * height)  # B * C * N
-        print("key size", key.size())
-
-        energy = torch.bmm(query, key)  # batch matrix-matrix product
-        print("energy size", energy.size())
-
-        attention = self.softmax(energy)  # B * N * N
-        print("attention size", attention.size())
-        value = self.value_conv(x).view(bs, -1, width * height)  # B * C * N
-        print("value size", value.size())
-        out = torch.bmm(value, attention.permute(0, 2, 1))  # batch matrix-matrix product
-        print("out size", out.size())
-        out = out.view(bs, C, width, height)  # B * C * W * H
-        print("out size2", out.size())
-
-        # Add attention weights onto input
-        out = self.gamma * out + x
-        print("out size3", out.size())
-        exit(1)
-
-        return out  # ,attention
-
-        ---------------
-        size = x.size()
-        x = x.view(*size[:2], -1)
-        f, g, h = self.query(x), self.key(x), self.value(x)
-        beta = self.softmax(torch.bmm(f.transpose(1, 2), g))
-        o = self.gamma * torch.bmm(h, beta) + x
-        return o.view(*size).contiguous()
-        """
-        """
-        # fix this monstrosity
-        if x.shape[3] >= 256:
-            pool = nn.MaxPool2d(kernel_size=8)
-
-            theta = self.theta(x)
-            phi = pool(self.phi(x))
-            g = pool(self.g(x))
-
-            #print(theta.shape, phi.shape, g.shape, x.shape)
-            # Perform reshapes
-            theta = theta.view(-1, self.ch // 8, x.shape[2] * x.shape[3])
-            #print("theta", theta.shape)
-
-            #print("phi before", phi.shape)
-
-            phi = phi.view(-1, self.ch // 8, x.shape[2] * x.shape[3] // 4)
-            #print("phi", phi.shape)
-
-            g = g.view(-1, self.ch // 2, x.shape[2] * x.shape[3] // 4)
-            #print("g", g.shape)
-
-            # Matmul and softmax to get attention maps
-            beta = self.softmax(torch.bmm(theta.transpose(1, 2), phi))
-            #print("beta", beta.shape)
-
-            # Attention map times g path
-            o = self.o(torch.bmm(g, beta.transpose(1, 2)).view(-1, self.ch // 2, x.shape[2], x.shape[3]))
-            # print("o", o.shape)
-
-            # print("out", (self.gamma*o+x).shape)
-        """
-        # else:
-        ### use if attention too compute intensive
+        # use pooling if attention too compute intensive
         pool = nn.MaxPool2d(kernel_size=2)
 
         theta = self.theta(x)
@@ -325,34 +360,23 @@ class SelfAttention(nn.Module):
         # phi = self.phi(x)
         # g = self.g(x)
 
-        # print(theta.shape, phi.shape, g.shape, x.shape)
         # Perform reshapes
         theta = theta.view(-1, self.ch // 8, x.shape[2] * x.shape[3])
-        # print("theta", theta.shape)
 
-        # print("phi before", phi.shape)
-
-        # if pooling                                            // 4
+        # if pooling                                             // 4
         phi = phi.view(-1, self.ch // 8, x.shape[2] * x.shape[3] // 4)
-        # print("phi", phi.shape)
-        # if pooling                                       // 4
+
+        # if pooling                                         // 4
         g = g.view(-1, self.ch // 2, x.shape[2] * x.shape[3] // 4)
-        # print("g", g.shape)
 
         # Matmul and softmax to get attention maps
         beta = self.softmax(torch.bmm(theta.transpose(1, 2), phi))
-        # print("beta", beta.shape)
 
         # Attention map times g path
         o = self.o(torch.bmm(g, beta.transpose(1, 2)).view(-1, self.ch // 2, x.shape[2], x.shape[3]))
-        # print("o", o.shape)
-
-        # print("out", (self.gamma*o+x).shape)
-
         return self.gamma * o + x
 
 
-# Add reference
 class SimpleSelfAttention(nn.Module):
     def __init__(self, n_in: int, ks=1):  # , n_out:int):
         super().__init__()
