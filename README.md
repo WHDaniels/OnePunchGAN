@@ -4,25 +4,33 @@
 
 Much of the work in the area of image colorization through neural networks is based around gathering training data by converting colored images to greyscale. But in various other image domains, such as manga or line-art, the colored images cannot be converted to the original no-color image via simple greyscale conversion, as shading (the L channel in the case of a LAB color space) may be added to the image in the coloring process by the artist. In most cases, the original no-color image is different from a greyscale conversion of the artist's coloring.
 
-This project explores how we might go about designing a colorization model given the added complexity that our model must perform some sort of shading task as well as the colorization task.
+This project explores how we might go about designing a colorization model given that 1) we must work with unpaired data, as procuring a paired training dataset through the usual means is not possible, and 2) there is an added complexity that our model must perform some sort of shading task as well as the colorization task.
 
 ## Background
 
 Much of the associated research, tutorials, and projects on colorization are predicated on learning the relationship between a particular color combination (usually the A and B channels from the LAB color space) and the lightness channel of the original image.
 
-This is an exceedingly common practice due to the type of data most commonly used in colorization problems, which comes in the form of greyscale pictures. To train a colorization network, one need only obtain a RGB picture from a large dataset like ImageNet and convert these images to a greyscale format. This greyscale format is essentially an encoding for the shading of the image.
+This is an exceedingly common practice due to the type of data most commonly used in colorization problems, which comes in the form of greyscale pictures. To obtain a training dataset that can be used to train a colorization network, one need merely obtain some large number RGB pictures from a dataset like ImageNet and convert these images to a greyscale format. This greyscale format is essentially an encoding for the shading of the image.
 
-[color image here], [greyscale image here]
+Original color image           |  Greyscale version (L channel only)
+:-------------------------:|:-------------------------:
+![](./readme-images/1_color.png)  |  ![](./readme-images/1_greyscale.png)
 
 In practice this is a great way to gather training data, as pictures taken in greyscale (such as pictures from before color photography was widespread) and pictures converted to greyscale from color share the same domain space. In other words, an image taken by non-color photography and the same image but in color which is then converted to greyscale are the same image. The training data then consists of a converted-to-greyscale version as model input, and the original colored version as the target for the model to predict.
 
-[example images here]
+
+> ![](./readme-images/2.png)
+> Various colored images and their grayscale counterparts
 
 ## Problem
 
-The problem is that this approach cannot be used for the image domain we want to color, namely line-art or manga image domains (or any image domain where shading is added in the coloring process). This is the case because if we use the greyscale conversion method for colored manga art, we don’t get the original image, we get the original image with the shading that was added through coloring. 
+The problem is that this approach cannot be used for several varieties of image domains, as in the case of line-art or manga image domains (or any image domain where shading is added in the colorization process). This is the case because if we use the greyscale conversion method for colored manga or line-art, we don’t get the original image, we get the original image with the shading that was added through coloring. 
 
-[shading added through coloring]
+Colored line-art | The original image (what we want)  |  Greyscale version (what we get)
+:-------------------------:|:-------------------------:|:-------------------------:
+![](./readme-images/3_colored.png)  |  ![](./readme-images/3_original.png) |  ![](./readme-images/3_greyscale.png)
+![](./readme-images/4_colored.png)  |  ![](./readme-images/4_original.png) |  ![](./readme-images/4_greyscale.png)
+![](./readme-images/5_colored.png)  |  ![](./readme-images/5_original.png) |  ![](./readme-images/5_greyscale.png)
 
 What we want is the original image itself (which we can call a 'scan' for simplicity's sake), which requires removing the added shading along with the color. This in and of itself is an ill-posed problem and roughly as complicated to solve as the colorization counterpart.
 
