@@ -1,4 +1,4 @@
-# OnePunchGAN
+# Deep Line-Art Colorization with Adversarial Nets
  
 (The original project intention was a colorization model for a specific manga series, but this couldn’t be completed in a reasonable amount of time. The result up to this point is a project in itself and I'll be updating this repo with additions that move towards the goal of the original vision.)
 
@@ -34,17 +34,15 @@ Colored line-art | The original image (what we want)  |  Greyscale version (what
 
 What we want is the original image itself (which we can call a 'scan' for simplicity's sake), which requires removing the added shading along with the color. This in and of itself is an ill-posed problem and roughly as complicated to solve as the colorization counterpart.
 
-For those unaware, the reason we need the original image is because if we want to create a model with a mapping of original scan to colored images [Scan -> Color], we need to train a model with that mapping in mind. (We want to translate scans to colorings versions, not greyscale conversions to colorings.) So our training data needs to be in the form of orginal scans for our input data and the corresponding colored image as our target data.
+For those unaware, the reason we need the original image is because if we want to create a model with a mapping of original scan to colored images [Scan -> Color], we need to train a model with that mapping in mind. (We want to translate scans to colored versions, not greyscale conversions to colored versions.) So our training data needs to be in the form of orginal scans for our input data and the corresponding colored image as our target data.
 
 In short, we can’t obtain paired data because the greyscale conversion method is inadequate to deal with the domain shift that happens during colorization. So what methods can we use to deal with these problems?
 
-[Pictures to explain how to get to original]
+## Methods: Part 1
 
-## Methods Part 1
+One possible method we could use to sidestep this problem is to use a separate conditional generative adversarial network (GAN or more specifically CGAN) to recreate the scan for us from the colored image. The intuition is that we use two GANs instead of one (we would be using a GAN to colorize in the first place), where the new GAN acts to produce an approximation of the original image distribution given an already colorized image.
 
-One possible method we could use to sidestep this problem is to use a separate conditional generative adversarial network (GAN or more specifically CGAN) to recreate the original image for us from the colored image. The intuition is that we use two GANs instead of one (we would be using a GAN to colorize in the first place), where the new GAN acts to produce an approximation of the original image distribution given an already colorized image.
-
-[images]
+[diagram representing a generator that outputs the scan given colored input]
 
 The first step is to formulate the generator that translates a colored image to a scan. Many unpaired image-to-image translation techniques exist, but an old and relatively popular one takes the form of a CycleGAN, which consists of two GANs training in parallel with the constraint of a cycle-consistency loss along with the adversarial loss that already exists for each GAN.
 
@@ -54,13 +52,13 @@ The two GANs in the CycleGAN meta-architecture are the scan generator and the co
 
 [process]
 
-We purposefully make a color generator that is very weak in terms of architecture (that is, a model that is not very complex), as our plan is to establish a good scan generator. The color generator pumps out flawed colorings of objects and sends them over to the scan generator. I purposefully make the scan generator relatively weak as well, the intuition being that a scan generator shouldn’t need to account for very much to be a good “greyscale + de-shader” approximator (for example, I don’t want inference time being wasted on the generator recognizing objects that should be de-shaded more vigorously). Through the course of training, the scan generator converges, and we have a model that can take colored images and convert them to a rough scan.
+We purposefully make a color generator that is very weak in terms of architecture (that is, a model that is not very complex), as our primary objective at this point is to establish a good scan generator. The color generator need not be a good one at this point, we just need it to output various colorings, even if they are bad colorings. The color generator pumps out flawed colorings of objects and sends them over to the scan generator. I purposefully make the scan generator relatively weak as well, the intuition being that a scan generator shouldn’t need to account for very much to be a decent “greyscale + de-shader” approximator (for example, I don’t want inference time being wasted on the generator recognizing objects that should be de-shaded more vigorously, although this could be pursued). Through the course of training, the scan generator converges, and we have a model that can take colored images and convert them to a rough scan.
 
 [scans from scan generator]
 
 Now that we have our scan generator, given any colored image in the domain of the training data (line-art/manga images) we have a scan counterpart, and therefore we have paired data for this domain, even if it isn’t perfect.
 
-## Methods Part 2
+## Methods: Part 2
 
 Now we can focus on our colorization model: the generator that will take our recreated scans and produce the best approximation of a colorization.
 
