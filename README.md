@@ -71,17 +71,25 @@ Now that we have our scan generator, given any colored image in the domain of th
 
 Now we can focus on our colorization model: the generator that will take our recreated scans and produce the best approximation of a colorization.
 
-We know we want to use a conditional GAN here, but we probably also want to incorporate information from the encoded input image into the decoded colorized image somehow. The intuition here is that we know that whatever plausible colorization the generator may produce, that colorization will just be the scan with some coloring and shading applied. So we want to transfer some knowledge from the process where the scan is encoded to the process where the output image is decoded.
+We know we want to use a conditional GAN here, but we probably also want to incorporate information at different levels of analysis from the encoded input image into the decoded colorized image somehow. The intuition here is that we know that whatever plausible colorization the generator may produce, that colorization will just be the scan with some coloring and shading applied. So we want to transfer some knowledge from the process where the scan is encoded to the process where the output image is decoded.
 
-[transfer knowledge idea]
+> ![](./readme-images/9.png)
+> We want to be able to give our generator access to these high-level features to help the process along.
 
 This can be accomplished this with a U-net, which is a simple encoder-decoder architecture with the added characteristic that it shares encoded output feature vectors with the decoder. Technically, the outputted feature maps from various encoder layers are concatenated with the outputted feature maps of decoder layers of the same output shape.
 
-[Unet idea]
+> ![](./readme-images/10.png)
+> The U-net architecture as proposed in its original paper: "U-Net: Convolutional Networks for Biomedical Image Segmentation"
 
 With this approach, our model has a better idea of what to replicate consistently in its output. This is reflected in training, where the model takes substantially fewer iterations to learn that the outline portrayed in the scan should always be recreated in the output image.
 
-[do we have images of this?]
+| Iteration | Real scan | Generated scan (before U-net) | Real Scan | Generated Scan (after U-net) |
+| :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
+| 250 | ![](./readme-images/11_250_real.png)  |  ![](./readme-images/11_250_generated.png) |  ![](./readme-images/11_250_real_unet.png) | ![](./readme-images/11_250_generated_unet.png) |
+| 500 | ![](./readme-images/11_500_real.png)  |  ![](./readme-images/11_500_generated.png) |  ![](./readme-images/11_500_real_unet.png) | ![](./readme-images/11_500_generated_unet.png) |
+| 1000 | ![](./readme-images/11_1000_real.png)  |  ![](./readme-images/11_1000_generated.png) |  ![](./readme-images/11_1000_real_unet.png) | ![](./readme-images/11_1000_generated_unet.png) |
+| 2000 | ![](./readme-images/11_2000_real.png) |  ![](./readme-images/11_2000_generated.png) |  ![](./readme-images/11_2000_real_unet.png) | ![](./readme-images/11_2000_generated_unet.png) |
+| 5000 | ![](./readme-images/11_5000_real.png) |  ![](./readme-images/11_5000_generated.png) |  ![](./readme-images/11_5000_real_unet.png) | ![](./readme-images/11_5000_generated_unet.png) |
 
 In image generation and colorization problems alike, it has been shown that incorporating some type of attention mechanism allows a model to explore specific and more important features in an image when trying to approximate some image distribution.
 
