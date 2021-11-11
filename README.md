@@ -43,9 +43,9 @@ In short, we can’t obtain paired data because the greyscale conversion method 
 One possible method we could use to sidestep this problem is to use a separate conditional generative adversarial network (GAN or more specifically CGAN) to recreate the scan for us from the colored image. The intuition is that we use two GANs instead of one (we would be using a GAN to colorize in the first place), where the new GAN acts to produce an approximation of the original image distribution given an already colorized image.
 
 > ![](./readme-images/6.png)
-> Our new generator takes colored images and recreates a scan from them.
+> Our proposed generator would take colored images and recreate a scan from them.
 
-The first step is to formulate the generator that translates a colored image to a scan. Many unpaired image-to-image translation techniques exist, but an old and relatively popular one takes the form of a CycleGAN, which consists of two GANs training in parallel with the constraint of a cycle-consistency loss along with the adversarial loss that already exists for each GAN.
+The first step is to formulate the GAN that translates a colored image to a scan. Many unpaired image-to-image translation techniques exist, but an old and relatively popular one takes the form of a CycleGAN, which consists of two GANs training in parallel with the constraint of a cycle-consistency loss along with the adversarial loss that already exists for each GAN.
 
 The two GANs in the CycleGAN meta-architecture are the scan generator and the color generator: one that generates scans from colored images, and one that generates colored images from scans. Given a set of scans and a set of colored images, the scan generator will produce what it thinks is a good approximation of a scan based on the colored input. This approximation will be sent over to the color generator, which will produce what it thinks is a good approximation of a colorized version based on the scan input. The colorized approximation of the scan approximation is compared to the original colored image. If these images differ too much the model is penalized; this is the basis of the cycle-consistency loss idea. The process is repeated but a scan is given to the color generator instead of vice versa. (The standard adversarial loss is used as well in this process.)
 
@@ -58,12 +58,12 @@ The two GANs in the CycleGAN meta-architecture are the scan generator and the co
 We purposefully make a color generator that is very weak in terms of architecture (that is, a model that is not very complex), as our primary objective at this point is to establish a good scan generator. The color generator need not be a good one at this point, we just need it to output various colorings, even if they are bad colorings. The color generator pumps out flawed colorings of objects and sends them over to the scan generator. I purposefully make the scan generator relatively weak as well, the intuition being that a scan generator shouldn’t need to account for very much to be a decent “greyscale + de-shader” approximator (for example, I don’t want inference time being wasted on the generator recognizing objects that should be de-shaded more vigorously, although this could be pursued). Through the course of training, the scan generator converges, and we have a model that can take colored images and convert them to a rough scan.
 
 Original (Real) Scan | Generated Scan (from real coloring)
-:-------------------------:|:-------------------------:|:-------------------------:
-![](./readme-images/8_original1.png)  |  ![](./readme-images/8_generated1.png) |
-![](./readme-images/8_original2.png)  |  ![](./readme-images/8_generated2.png) |
-![](./readme-images/8_original3.png)  |  ![](./readme-images/8_generated3.png) |
-![](./readme-images/8_original4.png)  |  ![](./readme-images/8_generated4.png) |
-![](./readme-images/8_original5.png)  |  ![](./readme-images/8_generated5.png) |
+:-------------------------:|:-------------------------:
+![](./readme-images/8_original1.png)  |  ![](./readme-images/8_generated1.png)
+![](./readme-images/8_original2.png)  |  ![](./readme-images/8_generated2.png)
+![](./readme-images/8_original3.png)  |  ![](./readme-images/8_generated3.png)
+![](./readme-images/8_original4.png)  |  ![](./readme-images/8_generated4.png)
+![](./readme-images/8_original5.png)  |  ![](./readme-images/8_generated5.png)
 
 Now that we have our scan generator, given any colored image in the domain of the training data (line-art/manga images) we have a scan counterpart, and therefore we have paired data for this domain, even if it isn’t perfect.
 
@@ -71,17 +71,25 @@ Now that we have our scan generator, given any colored image in the domain of th
 
 Now we can focus on our colorization model: the generator that will take our recreated scans and produce the best approximation of a colorization.
 
-We know we want to use a conditional GAN here, but we probably also want to incorporate information from the encoded input image into the decoded colorized image somehow. The intuition here is that we know that whatever plausible colorization the generator may produce, that colorization will just be the scan with some coloring and shading applied. So we want to transfer some knowledge from the process where the scan is encoded to the process where the output image is decoded.
+We know we want to use a conditional GAN here, but we probably also want to incorporate information at different levels of analysis from the encoded input image into the decoded colorized image somehow. The intuition here is that we know that whatever plausible colorization the generator may produce, that colorization will just be the scan with some coloring and shading applied. So we want to transfer some knowledge from the process where the scan is encoded to the process where the output image is decoded.
 
-[transfer knowledge idea]
+> ![](./readme-images/9.png)
+> We want to be able to give our generator access to these high-level features to help the process along.
 
 This can be accomplished this with a U-net, which is a simple encoder-decoder architecture with the added characteristic that it shares encoded output feature vectors with the decoder. Technically, the outputted feature maps from various encoder layers are concatenated with the outputted feature maps of decoder layers of the same output shape.
 
-[Unet idea]
+> ![](./readme-images/10.png)
+> The U-net architecture as proposed in its original paper: "U-Net: Convolutional Networks for Biomedical Image Segmentation"
 
 With this approach, our model has a better idea of what to replicate consistently in its output. This is reflected in training, where the model takes substantially fewer iterations to learn that the outline portrayed in the scan should always be recreated in the output image.
 
-[do we have images of this?]
+| Iteration | Real scan | Generated scan (before U-net) | Real Scan | Generated Scan (after U-net) |
+| :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
+| 250 | ![](./readme-images/11_250_real.png)  |  ![](./readme-images/11_250_generated.png) |  ![](./readme-images/11_250_real_unet.png) | ![](./readme-images/11_250_generated_unet.png) |
+| 500 | ![](./readme-images/11_500_real.png)  |  ![](./readme-images/11_500_generated.png) |  ![](./readme-images/11_500_real_unet.png) | ![](./readme-images/11_500_generated_unet.png) |
+| 1000 | ![](./readme-images/11_1000_real.png)  |  ![](./readme-images/11_1000_generated.png) |  ![](./readme-images/11_1000_real_unet.png) | ![](./readme-images/11_1000_generated_unet.png) |
+| 2000 | ![](./readme-images/11_2000_real.png) |  ![](./readme-images/11_2000_generated.png) |  ![](./readme-images/11_2000_real_unet.png) | ![](./readme-images/11_2000_generated_unet.png) |
+| 5000 | ![](./readme-images/11_5000_real.png) |  ![](./readme-images/11_5000_generated.png) |  ![](./readme-images/11_5000_real_unet.png) | ![](./readme-images/11_5000_generated_unet.png) |
 
 In image generation and colorization problems alike, it has been shown that incorporating some type of attention mechanism allows a model to explore specific and more important features in an image when trying to approximate some image distribution.
 
