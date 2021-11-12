@@ -74,15 +74,21 @@ Now we can focus on our colorization model: the generator that will take our rec
 We know we want to use a conditional GAN here, but we probably also want to incorporate information at different levels of analysis from the encoded input image into the decoded colorized image somehow. The intuition here is that we know that whatever plausible colorization the generator may produce, that colorization will just be the scan with some coloring and shading applied. So we want to transfer some knowledge from the process where the scan is encoded to the process where the output image is decoded.
 
 > ![](./readme-images/9.png)
+> 
 > We want to be able to give our generator access to these high-level features to help the process along.
 
 This can be accomplished this with a U-net, which is a simple encoder-decoder architecture with the added characteristic that it shares encoded output feature vectors with the decoder. Technically, the outputted feature maps from various encoder layers are concatenated with the outputted feature maps of decoder layers of the same output shape.
 
 > ![](./readme-images/10.png)
+> 
 > The U-net architecture as proposed in its original paper: "U-Net: Convolutional Networks for Biomedical Image Segmentation"
 
 With this approach, our model has a better idea of what to replicate consistently in its output. This is reflected in training, where the model takes substantially fewer iterations to learn that the outline portrayed in the scan should always be recreated in the output image.
 
+> Comparison pictures below will be slightly different due to 1) the data augmentation process used during training and 2) the semi-paired nature of the comparison pictures (for > instance, pictures are from the same manga series but have different translations, watermarks, stylings, etc.)
+> 
+> Regardless, they give a sense of the utility of using a U-net to facilitate the sharing of high-level information.
+> 
 | Iteration | Real scan | Generated scan (before U-net) | Real Scan | Generated Scan (after U-net) |
 | :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
 | 250 | ![](./readme-images/11_250_real.png)  |  ![](./readme-images/11_250_generated.png) |  ![](./readme-images/11_250_real_unet.png) | ![](./readme-images/11_250_generated_unet.png) |
@@ -93,7 +99,8 @@ With this approach, our model has a better idea of what to replicate consistentl
 
 In image generation and colorization problems alike, it has been shown that incorporating some type of attention mechanism allows a model to explore specific and more important features in an image when trying to approximate some image distribution.
 
-[attention]
+![](./readme-images/12.png)
+> Self-attention in generative adversarial networks allows this model to attend to the difference between dog legs and scenery, resulting in a generated dog that is not missing > any legs.
 
 In this case, for the generator and discriminator alike, three self-attention layers are subsequently appended to layers where the feature maps are largest. Simple self-attention (based on [x]) is used in contrast to the pooled self-attention proposed in the [SAGAN] paper.
 
