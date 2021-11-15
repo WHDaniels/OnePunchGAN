@@ -100,20 +100,22 @@ With this approach, our model has a better idea of what to replicate consistentl
 In image generation and colorization problems alike, it has been shown that incorporating some type of attention mechanism allows a model to explore specific and more important features in an image when trying to approximate some image distribution.
 
 ![](./readme-images/12.png)
-> Self-attention in generative adversarial networks allows this model to attend to the difference between dog legs and scenery, resulting in a generated dog that is not missing > any legs.
+> Self-attention in generative adversarial networks allows this model to attend to the difference between dog legs and scenery, resulting in a generated dog that is not missing 
+> 
 
-In this case, for the generator and discriminator alike, three self-attention layers are subsequently appended to layers where the feature maps are largest. Simple self-attention (based on [x]) is used in contrast to the pooled self-attention proposed in the [SAGAN] paper.
+In this case, for the generator and discriminator alike, three self-attention layers are subsequently appended to layers where the feature maps are largest (for the generator it's only the output maps). Simple self-attention is used in contrast to the pooled self-attention proposed in the SAGAN paper.
 
-[links to all above]
-[self attention layers]
+![](./readme-images/13.png)
+> Summary of the pixel self-attention technique as expressed in the original paper.
 
 For upscaling in the decoder portion of the U-net, the pixel shuffle technique with convolution is used in lieu of both up sampling with convolution and deconvolution.
 
-[pixel shuffle]
+![](./readme-images/14.png)
+> Summary of the pixel shuffle technique as expressed in the original paper.
 
 The U-net architecture is also modified, resulting in the final architecture used:
 
-[architecture used]
+![](./readme-images/15.png)
 
 A PatchGAN, introduced by the Pix2Pix model in [xxx], is used as the discriminator that is paired with our new generator. Instead of taking information from the entire image and evaluating whether the image is real or fake in its totality as a regular discriminator would, a PatchGAN takes patches of a given image and evaluates each individual patch as real or fake and gives the average of all evaluations as output.
 
