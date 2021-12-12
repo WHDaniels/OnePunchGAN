@@ -55,7 +55,7 @@ The two GANs in the CycleGAN meta-architecture are the scan generator and the co
 > ![](./readme-images/7_arch2.png)
 > [Real scan] -> [Generated coloring] -> [Generated scan from generated coloring]
 
-We purposefully make a color generator that is very weak in terms of architecture (that is, a model that is not very complex), as our primary objective at this point is to establish a good scan generator. The color generator need not be a good one at this point, we just need it to output various colorings, even if they are bad colorings. The color generator pumps out flawed colorings of objects and sends them over to the scan generator. I purposefully make the scan generator relatively weak as well, the intuition being that a scan generator shouldn’t need to account for very much to be a decent “greyscale + de-shader” approximator (for example, I don’t want inference time being wasted on the generator recognizing objects that should be de-shaded more vigorously, although this could be pursued). Through the course of training, the scan generator converges, and we have a model that can take colored images and convert them to a rough scan.
+We purposefully make a color generator that is very weak in terms of architecture (that is, a model that is not very complex), as our primary objective at this point is to establish a good scan generator. The color generator need not be a good one at this point, we just need it to output various colorings, even if they are bad colorings. The color generator pumps out flawed colorings of objects and sends them over to the scan generator. I purposefully make the scan generator relatively weak as well, the intuition being that a scan generator shouldn’t need to account for very much to be a decent “greyscale + de-shader” approximator (for example, I don’t want inference time being wasted on the generator recognizing objects that should be de-shaded more vigorously, although this could be pursued). Through the course of training, the scan generator converges, and we have a model that can take colored images and convert them to a rough scan. (All architectures are modified versions of the default CycleGAN generator/discriminator.)
 
 Original (Real) Scan | Generated Scan (from real coloring)
 :-------------------------:|:-------------------------:
@@ -106,7 +106,7 @@ In image generation and colorization problems alike, it has been shown that inco
 In this case, for the generator and discriminator alike, three self-attention layers are subsequently appended to layers where the feature maps are largest (for the generator it's only the output maps). Simple self-attention is used in contrast to the pooled self-attention proposed in the SAGAN paper.
 
 ![](./readme-images/13.png)
-> Summary of the pixel self-attention technique as expressed in the original paper.
+> Summary of the self-attention technique as expressed in the original paper.
 
 For upscaling in the decoder portion of the U-net, the pixel shuffle technique with convolution is used in lieu of both up sampling with convolution and deconvolution.
 
@@ -117,31 +117,57 @@ The U-net architecture is also modified, resulting in the final architecture use
 
 ![](./readme-images/15.png)
 
-A PatchGAN, introduced by the Pix2Pix model in [xxx], is used as the discriminator that is paired with our new generator. Instead of taking information from the entire image and evaluating whether the image is real or fake in its totality as a regular discriminator would, a PatchGAN takes patches of a given image and evaluates each individual patch as real or fake and gives the average of all evaluations as output.
+With the architecure in place, the null weights of the encoder are replaced by those from a ResNet50 classification model trained on the Danbooru2018 dataset, which then are frozen. This allows for significantly faster training and reduced memory consumption since we only need to train the decoder, while enabling our Unet to encode line-art-style images accurately.
 
-[PatchGAN]
+A PatchGAN is used as the discriminator that is paired with our new generator. Instead of taking information from the entire image and evaluating whether the image is real or fake in its totality as a regular discriminator would, a PatchGAN takes patches of a given image and evaluates each individual patch as real or fake and gives the average of all evaluations as output.
 
-The general pipeline of the method is as follows:
+![](./readme-images/16.png)
 
-[colored image -> scangen(CL) -> colorGAN(scangen(CL))]
+The final pipeline of the method is as follows:
+
+![](./readme-images/17.png)
 
 
 ## Training
 
 ### Data
 
-Around 340,000 specifically tagged images were taken from the [Danbooru2020 dataset] and used as training data. Tags are selected to bound the data within a reasonable domain. No test set is used as there do not seem to be reliable algorithmic metrics for colorization problems. Instead, every 250 iterations the scan approximation, the colorized image, and the ground truth are saved to disk for visual evaluation.
+Around 340,000 specifically tagged images were taken from the Danbooru2020 dataset and used as training data. Images were filtered by tags to bound the data. No test set is used as there are not reliable algorithmic metrics for evaluating results in colorization problems. Instead, every 250 iterations the scan approximation, the colorized image, and the ground truth are saved to disk for visual evaluation.
+
+A data augmentation pipeline of flips, slight rotations, gaussian blurring, random erasing, perspective shifts, and smart random crops (minimal crops of the image based on its height and width) are used to prevent overfitting when training for long periods, as the model has many parameters.
 
 ### Hyperparameters and Method
 
-[images representing this]
+As mentioned in the SAGAN paper a two-timescale update rule is adapted, with the discriminator and generator learning rate initially set to 0.0004 and 0.0001 respectively. Halfway through train the learning rate for both models is set to decay linearly and the model was trained for 20 epochs per stage.
+
+The model is trained in stages, where each stage denotes the size of the images given to the model to learn. In the first stage the model is given 64x64 images. Every stage after this the model is given images twice as big in each dimension (64x64 -> 128x128 -> 256x256). (Model training is at 128x128 images at the moment, as this project was postponed in favor of focusing on coursework.)
 
 ## Results (so far)
+### Training results
+[]
 
-[Images so far, sorted by image size and epoch, etc; points of failure]
+### Independently gathered test results
+[]
 
 ## Experimentation and Failed Approaches
+### Data
+There were many ideas I explored and papers I read before I finally settled on the approach above. In the beginning alot of time was spent gathering actual paired data, which in hindsight is an impossible task, as the amount of colorings needed to train a large model simply don't exist (to my knowledge). Most of this gathered data was only "semi-paired" (the same save for differences in borders, watermarks, different translations of text, variations in noise, etc). Future work could involve solving problems where otherwise paired image data differs as such.
 
-## Conclusions (any more to add?)
+### Model approaches
+A Wasserstein GAN with gradient penalty was one of the more promising approaches in terms of the model, but performance stagnated compared to the model emulated in the SAGAN paper. This is an anomaly I would like to get to the bottom of, as WGANs seem preferable theoretically.
 
-(end with conclusion if there is not anything left of vlaue to add)
+Pondered and/or attempted approaches involved:
+- Memopainter (attempted)
+- ChromaGAN
+- Instance-aware colorization
+- Pix2Pix on semi-paired data (attemped)
+- Pure CycleGAN approach on semi-paired data (attempted)
+- Independently making a ResNet backbone encoder through segmentation models
+- Implementation of feature loss through a pretrained ResNet50 (attempted)
+- Pretraining an encoder through deep clustering of unsupervised randomly cropped images in manga domains.
+- Utilizing a fusion model that incorporates ResNets pretrained on ImageNet with a separate line-art colorization model
+- Different colorization loss ideas
+
+## Conclusions and possible future work
+
+(end with conclusion if there is not anything left of value to add)
