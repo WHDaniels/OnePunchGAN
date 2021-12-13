@@ -85,17 +85,16 @@ This can be accomplished this with a U-net[^2], which is a simple encoder-decode
 
 With this approach, our model has a better idea of what to replicate consistently in its output. This is reflected in training, where the model takes substantially fewer iterations to learn that the outline portrayed in the scan should always be recreated in the output image.
 
-> Comparison pictures below will be slightly different due to 1) the data augmentation process used during training and 2) the semi-paired nature of the comparison pictures (for instance, pictures are from the same manga series but have different translations, watermarks, stylings, etc.)
-
-> Regardless, they give a sense of the utility of using a U-net to facilitate the sharing of high-level information.
+> Comparison pictures below will be slightly different due to 1) the data augmentation process used during training and 2) the semi-paired nature of the comparison pictures (for instance, pictures are from the same manga series but have different translations, watermarks, stylings, etc).
+Regardless, they give a sense of the utility of using a U-net to facilitate the sharing of high-level information.
 
 | Iteration | Real scan | Generated scan (before U-net) | Real Scan | Generated Scan (after U-net) |
 | :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
-| 250 | <img src="./readme-images/11_250_real.png" alt="drawing" width="340" /> |  <img src="./readme-images/11_250_generated.png" alt="drawing" width="300" /> | <img src="./readme-images/11_250_real_unet.png" alt="drawing" width="340" /> | <img src="./readme-images/11_250_generated_unet.png" alt="drawing" width="300" /> |
-| 500 | ![](./readme-images/11_500_real.png)  |  ![](./readme-images/11_500_generated.png) |  ![](./readme-images/11_500_real_unet.png) | ![](./readme-images/11_500_generated_unet.png) |
-| 1000 | ![](./readme-images/11_1000_real.png)  |  ![](./readme-images/11_1000_generated.png) |  ![](./readme-images/11_1000_real_unet.png) | ![](./readme-images/11_1000_generated_unet.png) |
-| 2000 | ![](./readme-images/11_2000_real.png) |  ![](./readme-images/11_2000_generated.png) |  ![](./readme-images/11_2000_real_unet.png) | ![](./readme-images/11_2000_generated_unet.png) |
-| 5000 | ![](./readme-images/11_5000_real.png) |  ![](./readme-images/11_5000_generated.png) |  ![](./readme-images/11_5000_real_unet.png) | ![](./readme-images/11_5000_generated_unet.png) |
+| 250 | <img src="./readme-images/11_250_real.png" alt="drawing" width="170" /> |  <img src="./readme-images/11_250_generated.png" alt="drawing" width="170" /> | <img src="./readme-images/11_250_real_unet.png" alt="drawing" width="170" /> | <img src="./readme-images/11_250_generated_unet.png" alt="drawing" width="170" /> |
+| 500 | <img src="./readme-images/11_500_real.png" alt="drawing" width="170" /> |  <img src="./readme-images/11_500_generated.png" alt="drawing" width="170" /> | <img src="./readme-images/11_500_real_unet.png" alt="drawing" width="170" /> | <img src="./readme-images/11_500_generated_unet.png" alt="drawing" width="170" /> |
+| 1000 | <img src="./readme-images/11_1000_real.png" alt="drawing" width="170" /> |  <img src="./readme-images/11_1000_generated.png" alt="drawing" width="170" /> | <img src="./readme-images/11_1000_real_unet.png" alt="drawing" width="170" /> | <img src="./readme-images/11_1000_generated_unet.png" alt="drawing" width="170" /> |
+| 2000 | <img src="./readme-images/11_2000_real.png" alt="drawing" width="170" /> |  <img src="./readme-images/11_2000_generated.png" alt="drawing" width="170" /> | <img src="./readme-images/11_2000_real_unet.png" alt="drawing" width="170" /> | <img src="./readme-images/11_2000_generated_unet.png" alt="drawing" width="170" /> |
+| 5000 | <img src="./readme-images/11_5000_real.png" alt="drawing" width="170" /> |  <img src="./readme-images/11_5000_generated.png" alt="drawing" width="170" /> | <img src="./readme-images/11_5000_real_unet.png" alt="drawing" width="170" /> | <img src="./readme-images/11_5000_generated_unet.png" alt="drawing" width="170" /> |
 
 In image generation and colorization problems alike, it has been shown that incorporating some type of attention mechanism allows a model to explore specific and more important features in an image when trying to approximate some image distribution.
 
