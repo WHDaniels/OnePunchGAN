@@ -59,11 +59,11 @@ We purposefully make a color generator that is very weak in terms of architectur
 
 Original (Real) Scan | Generated Scan (from real coloring)
 :-------------------------:|:-------------------------:
-![](./readme-images/8_original1.png)  |  ![](./readme-images/8_generated1.png)
-![](./readme-images/8_original2.png)  |  ![](./readme-images/8_generated2.png)
-![](./readme-images/8_original3.png)  |  ![](./readme-images/8_generated3.png)
-![](./readme-images/8_original4.png)  |  ![](./readme-images/8_generated4.png)
-![](./readme-images/8_original5.png)  |  ![](./readme-images/8_generated5.png)
+<img src="./readme-images/8_original1.png" alt="drawing" width="300" /> |  <img src="./readme-images/8_generated1.png" alt="drawing" width="300" />
+<img src="./readme-images/8_original2.png" alt="drawing" width="300" /> |  <img src="./readme-images/8_generated2.png" alt="drawing" width="300" />
+<img src="./readme-images/8_original3.png" alt="drawing" width="300" /> |  <img src="./readme-images/8_generated3.png" alt="drawing" width="300" />
+<img src="./readme-images/8_original4.png" alt="drawing" width="300" /> |  <img src="./readme-images/8_generated4.png" alt="drawing" width="300" />
+<img src="./readme-images/8_original5.png" alt="drawing" width="300" /> |  <img src="./readme-images/8_generated5.png" alt="drawing" width="300" />
 
 Now that we have our scan generator, given any colored image in the domain of the training data (line-art/manga images) we have a scan counterpart, and therefore we have paired data for this domain, even if it isn’t perfect.
 
@@ -91,7 +91,7 @@ With this approach, our model has a better idea of what to replicate consistentl
 
 | Iteration | Real scan | Generated scan (before U-net) | Real Scan | Generated Scan (after U-net) |
 | :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
-| 250 | ![](./readme-images/11_250_real.png)  |  ![](./readme-images/11_250_generated.png) |  ![](./readme-images/11_250_real_unet.png) | ![](./readme-images/11_250_generated_unet.png) |
+| 250 | <img src="./readme-images/11_250_real.png" alt="drawing" width="340" /> |  <img src="./readme-images/11_250_generated.png" alt="drawing" width="300" /> | <img src="./readme-images/11_250_real_unet.png" alt="drawing" width="340" /> | <img src="./readme-images/11_250_generated_unet.png" alt="drawing" width="300" /> |
 | 500 | ![](./readme-images/11_500_real.png)  |  ![](./readme-images/11_500_generated.png) |  ![](./readme-images/11_500_real_unet.png) | ![](./readme-images/11_500_generated_unet.png) |
 | 1000 | ![](./readme-images/11_1000_real.png)  |  ![](./readme-images/11_1000_generated.png) |  ![](./readme-images/11_1000_real_unet.png) | ![](./readme-images/11_1000_generated_unet.png) |
 | 2000 | ![](./readme-images/11_2000_real.png) |  ![](./readme-images/11_2000_generated.png) |  ![](./readme-images/11_2000_real_unet.png) | ![](./readme-images/11_2000_generated_unet.png) |
@@ -121,6 +121,7 @@ With the architecure in place, the null weights of the encoder are replaced by t
 A PatchGAN is used as the discriminator that is paired with our new generator[^7]. Instead of taking information from the entire image and evaluating whether the image is real or fake in its totality as a regular discriminator would, a PatchGAN takes patches of a given image and evaluates each individual patch as real or fake and gives the average of all evaluations as output.
 
 ![](./readme-images/16.png)
+> Illustration of the PatchGAN method for evaluating images.
 
 The final pipeline of the method is as follows:
 
@@ -139,18 +140,17 @@ A data augmentation pipeline of flips, slight rotations, gaussian blurring, rand
 As mentioned in the SAGAN paper a two-timescale update rule is adapted, with the discriminator and generator learning rate initially set to 0.0004 and 0.0001 respectively. Halfway through train the learning rate for both models is set to decay linearly and the model was trained for 20 epochs per stage.
 
 The model is trained in stages, where each stage denotes the size of the images given to the model to learn. In the first stage the model is given 64x64 images. Every stage after this the model is given images twice as big in each dimension (64x64 -> 128x128 -> 256x256). (Model training is at 128x128 images at the moment, as this project was postponed in favor of focusing on coursework.)
-
-## Some results (so far; 128x128 images)
-Scan Approximation | Original Coloring | Colored Approximation
+## Some results (so far) | 128x128 images
+Scan Approximation | Colored Approximation | Original Coloring
 :-------------------------:|:-------------------------:|:-------------------------:
-![](./readme-images/18_scan.png)  |  ![](./readme-images/18_original.png) |  ![](./readme-images/18_colored.png)
-![](./readme-images/19_scan.png)  |  ![](./readme-images/19_original.png) |  ![](./readme-images/19_colored.png)
-![](./readme-images/20_scan.png)  |  ![](./readme-images/20_original.png) |  ![](./readme-images/20_colored.png)
-![](./readme-images/21_scan.png)  |  ![](./readme-images/21_original.png) |  ![](./readme-images/21_colored.png)
-![](./readme-images/22_scan.png)  |  ![](./readme-images/22_original.png) |  ![](./readme-images/22_colored.png)
-![](./readme-images/23_scan.png)  |  ![](./readme-images/23_original.png) |  ![](./readme-images/23_colored.png)
-![](./readme-images/24_scan.png)  |  ![](./readme-images/24_original.png) |  ![](./readme-images/24_colored.png)
-![](./readme-images/25_scan.png)  |  ![](./readme-images/25_original.png) |  ![](./readme-images/25_colored.png)
+![](./readme-images/18_scan.png)  |  ![](./readme-images/18_colored.png)  |  ![](./readme-images/18_original.png)
+![](./readme-images/19_scan.png)  |  ![](./readme-images/19_colored.png)  |  ![](./readme-images/19_original.png) 
+![](./readme-images/20_scan.png)  |  ![](./readme-images/20_colored.png)  |  ![](./readme-images/20_original.png)
+![](./readme-images/21_scan.png)  |  ![](./readme-images/21_colored.png)  |  ![](./readme-images/21_original.png) 
+![](./readme-images/22_scan.png)  |  ![](./readme-images/22_colored.png)  |  ![](./readme-images/22_original.png) 
+![](./readme-images/23_scan.png)  |  ![](./readme-images/23_colored.png)  |  ![](./readme-images/23_original.png) 
+![](./readme-images/24_scan.png)  |  ![](./readme-images/24_colored.png)  |  ![](./readme-images/24_original.png) 
+![](./readme-images/25_scan.png)  |  ![](./readme-images/25_colored.png)  |  ![](./readme-images/25_original.png) 
 
 ## Experimentation and Failed Approaches
 ### Data
