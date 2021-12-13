@@ -45,7 +45,7 @@ One possible method we could use to sidestep this problem is to use a separate c
 > ![](./readme-images/6.png)
 > Our proposed generator would take colored images and recreate a scan from them.
 
-The first step is to formulate the GAN that translates a colored image to a scan. Many unpaired image-to-image translation techniques exist, but an old and relatively popular one takes the form of a CycleGAN, which consists of two GANs training in parallel with the constraint of a cycle-consistency loss along with the adversarial loss that already exists for each GAN.
+The first step is to formulate the GAN that translates a colored image to a scan. Many unpaired image-to-image translation techniques exist, but an old and relatively popular one takes the form of a CycleGAN[^1], which consists of two GANs training in parallel with the constraint of a cycle-consistency loss along with the adversarial loss that already exists for each GAN.
 
 The two GANs in the CycleGAN meta-architecture are the scan generator and the color generator: one that generates scans from colored images, and one that generates colored images from scans. Given a set of scans and a set of colored images, the scan generator will produce what it thinks is a good approximation of a scan based on the colored input. This approximation will be sent over to the color generator, which will produce what it thinks is a good approximation of a colorized version based on the scan input. The colorized approximation of the scan approximation is compared to the original colored image. If these images differ too much the model is penalized; this is the basis of the cycle-consistency loss idea. The process is repeated but a scan is given to the color generator instead of vice versa. (The standard adversarial loss is used as well in this process.)
 
@@ -77,7 +77,7 @@ We know we want to use a conditional GAN here, but we probably also want to inco
 > 
 > We want to be able to give our generator access to these high-level features to help the process along.
 
-This can be accomplished this with a U-net, which is a simple encoder-decoder architecture with the added characteristic that it shares encoded output feature vectors with the decoder. Technically, the outputted feature maps from various encoder layers are concatenated with the outputted feature maps of decoder layers of the same output shape.
+This can be accomplished this with a U-net[^2], which is a simple encoder-decoder architecture with the added characteristic that it shares encoded output feature vectors with the decoder. Technically, the outputted feature maps from various encoder layers are concatenated with the outputted feature maps of decoder layers of the same output shape.
 
 > ![](./readme-images/10.png)
 > 
@@ -85,10 +85,10 @@ This can be accomplished this with a U-net, which is a simple encoder-decoder ar
 
 With this approach, our model has a better idea of what to replicate consistently in its output. This is reflected in training, where the model takes substantially fewer iterations to learn that the outline portrayed in the scan should always be recreated in the output image.
 
-> Comparison pictures below will be slightly different due to 1) the data augmentation process used during training and 2) the semi-paired nature of the comparison pictures (for > instance, pictures are from the same manga series but have different translations, watermarks, stylings, etc.)
-> 
+> Comparison pictures below will be slightly different due to 1) the data augmentation process used during training and 2) the semi-paired nature of the comparison pictures (for instance, pictures are from the same manga series but have different translations, watermarks, stylings, etc.)
+
 > Regardless, they give a sense of the utility of using a U-net to facilitate the sharing of high-level information.
-> 
+
 | Iteration | Real scan | Generated scan (before U-net) | Real Scan | Generated Scan (after U-net) |
 | :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
 | 250 | ![](./readme-images/11_250_real.png)  |  ![](./readme-images/11_250_generated.png) |  ![](./readme-images/11_250_real_unet.png) | ![](./readme-images/11_250_generated_unet.png) |
@@ -100,15 +100,14 @@ With this approach, our model has a better idea of what to replicate consistentl
 In image generation and colorization problems alike, it has been shown that incorporating some type of attention mechanism allows a model to explore specific and more important features in an image when trying to approximate some image distribution.
 
 ![](./readme-images/12.png)
-> Self-attention in generative adversarial networks allows this model to attend to the difference between dog legs and scenery, resulting in a generated dog that is not missing 
-> 
+> Self-attention in generative adversarial networks allows this model to attend to the difference between dog legs and scenery, resulting in a generated dog that is not missing
 
-In this case, for the generator and discriminator alike, three self-attention layers are subsequently appended to layers where the feature maps are largest (for the generator it's only the output maps). Simple self-attention is used in contrast to the pooled self-attention proposed in the SAGAN paper.
+In this case, for the generator and discriminator alike, three self-attention layers are subsequently appended to layers where the feature maps are largest (for the generator it's only the output maps)[^3]. Simple self-attention is used in contrast to the pooled self-attention proposed in the SAGAN paper[^4].
 
 ![](./readme-images/13.png)
 > Summary of the self-attention technique as expressed in the original paper.
 
-For upscaling in the decoder portion of the U-net, the pixel shuffle technique with convolution is used in lieu of both up sampling with convolution and deconvolution.
+For upscaling in the decoder portion of the U-net, the pixel shuffle technique with convolution is used in lieu of both up sampling with convolution and deconvolution[^5].
 
 ![](./readme-images/14.png)
 > Summary of the pixel shuffle technique as expressed in the original paper.
@@ -117,9 +116,9 @@ The U-net architecture is also modified, resulting in the final architecture use
 
 ![](./readme-images/15.png)
 
-With the architecure in place, the null weights of the encoder are replaced by those from a ResNet50 classification model trained on the Danbooru2018 dataset, which then are frozen. This allows for significantly faster training and reduced memory consumption since we only need to train the decoder, while enabling our Unet to encode line-art-style images accurately.
+With the architecure in place, the null weights of the encoder are replaced by those from a ResNet50 classification model trained on the Danbooru2018 dataset[^6], which then are frozen. This allows for significantly faster training and reduced memory consumption since we only need to train the decoder, while enabling our Unet to encode line-art-style images accurately.
 
-A PatchGAN is used as the discriminator that is paired with our new generator. Instead of taking information from the entire image and evaluating whether the image is real or fake in its totality as a regular discriminator would, a PatchGAN takes patches of a given image and evaluates each individual patch as real or fake and gives the average of all evaluations as output.
+A PatchGAN is used as the discriminator that is paired with our new generator[^7]. Instead of taking information from the entire image and evaluating whether the image is real or fake in its totality as a regular discriminator would, a PatchGAN takes patches of a given image and evaluates each individual patch as real or fake and gives the average of all evaluations as output.
 
 ![](./readme-images/16.png)
 
@@ -129,10 +128,9 @@ The final pipeline of the method is as follows:
 
 
 ## Training
-
 ### Data
 
-Around 340,000 specifically tagged images were taken from the Danbooru2020 dataset and used as training data. Images were filtered by tags to bound the data. No test set is used as there are not reliable algorithmic metrics for evaluating results in colorization problems. Instead, every 250 iterations the scan approximation, the colorized image, and the ground truth are saved to disk for visual evaluation.
+Around 340,000 specifically tagged images were taken from the Danbooru2020 dataset and used as training data[^8]. Images were filtered by tags to bound the data. No test set is used as there are not reliable algorithmic metrics for evaluating results in colorization problems. Instead, every 250 iterations the scan approximation, the colorized image, and the ground truth are saved to disk for visual evaluation.
 
 A data augmentation pipeline of flips, slight rotations, gaussian blurring, random erasing, perspective shifts, and smart random crops (minimal crops of the image based on its height and width) are used to prevent overfitting when training for long periods, as the model has many parameters.
 
@@ -142,19 +140,24 @@ As mentioned in the SAGAN paper a two-timescale update rule is adapted, with the
 
 The model is trained in stages, where each stage denotes the size of the images given to the model to learn. In the first stage the model is given 64x64 images. Every stage after this the model is given images twice as big in each dimension (64x64 -> 128x128 -> 256x256). (Model training is at 128x128 images at the moment, as this project was postponed in favor of focusing on coursework.)
 
-## Results (so far)
-### Training results
-[]
-
-### Independently gathered test results
-[]
+## Some results (so far; 128x128 images)
+Scan Approximation | Original Coloring | Colored Approximation
+:-------------------------:|:-------------------------:|:-------------------------:
+![](./readme-images/18_scan.png)  |  ![](./readme-images/18_original.png) |  ![](./readme-images/18_colored.png)
+![](./readme-images/19_scan.png)  |  ![](./readme-images/19_original.png) |  ![](./readme-images/19_colored.png)
+![](./readme-images/20_scan.png)  |  ![](./readme-images/20_original.png) |  ![](./readme-images/20_colored.png)
+![](./readme-images/21_scan.png)  |  ![](./readme-images/21_original.png) |  ![](./readme-images/21_colored.png)
+![](./readme-images/22_scan.png)  |  ![](./readme-images/22_original.png) |  ![](./readme-images/22_colored.png)
+![](./readme-images/23_scan.png)  |  ![](./readme-images/23_original.png) |  ![](./readme-images/23_colored.png)
+![](./readme-images/24_scan.png)  |  ![](./readme-images/24_original.png) |  ![](./readme-images/24_colored.png)
+![](./readme-images/25_scan.png)  |  ![](./readme-images/25_original.png) |  ![](./readme-images/25_colored.png)
 
 ## Experimentation and Failed Approaches
 ### Data
 There were many ideas I explored and papers I read before I finally settled on the approach above. In the beginning alot of time was spent gathering actual paired data, which in hindsight is an impossible task, as the amount of colorings needed to train a large model simply don't exist (to my knowledge). Most of this gathered data was only "semi-paired" (the same save for differences in borders, watermarks, different translations of text, variations in noise, etc). Future work could involve solving problems where otherwise paired image data differs as such.
 
-### Model approaches
-A Wasserstein GAN with gradient penalty was one of the more promising approaches in terms of the model, but performance stagnated compared to the model emulated in the SAGAN paper. This is an anomaly I would like to get to the bottom of, as WGANs seem preferable theoretically.
+### Model/methodological approaches
+A Wasserstein GAN with gradient penalty was one of the more promising approaches in terms of the model, but performance stagnated compared to the model emulated in the SAGAN paper[^9]. This is an anomaly I would like to get to the bottom of, as WGANs seem preferable theoretically.
 
 Pondered and/or attempted approaches involved:
 - Memopainter (attempted)
@@ -168,6 +171,25 @@ Pondered and/or attempted approaches involved:
 - Utilizing a fusion model that incorporates ResNets pretrained on ImageNet with a separate line-art colorization model
 - Different colorization loss ideas
 
-## Conclusions and possible future work
+## Limitations and possible future work
+There are many areas that can be improved here:
+- A proper custom backbone for the encoder of the main generator.
+- I think the training domain here is too broad (the images trained on are from many different categories in terms of content).
+- Making a better and more polished scan generator.
+- Replacing the per-pixel loss with some kind of structure loss (maybe using per-pixel loss on edge-detected versions of the images). A blanket L1 loss works against colorful expression from the generator. This could also be addressed by linearly decreasing the impact of the per-pixel loss (minimizing lambda) as the model trains. But in doing this we run into questions surrounding whether the discriminator is strong enough to act as the sole loss function, which is why the WGAN approach is so appealing (one cannot make the discriminator too complex in a non-WGAN framework without the generator failing).
+- As expressed above, a WGAN implementation.
+- [...more here, there are many more limitations that should be addressed]
 
-(end with conclusion if there is not anything left of value to add)
+Future work, hopefully completed soon, includes training the model on higher resolution images and using the NoGAN approach as a substitute for linearly decaying the L1 loss.
+
+## References
+[^1]: [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://arxiv.org/abs/1703.10593)
+[^2]: [U-Net: Convolutional Networks for Biomedical Image Segmentation](https://arxiv.org/abs/1505.04597)
+[^3]: [Self-Attention Generative Adversarial Networks](https://arxiv.org/abs/1805.08318)
+[^4]: [SimpleSelfAttention](https://github.com/sdoria/SimpleSelfAttention)
+[^5]: [Real-Time Single Image and Video Super-Resolution Using an Efficient Sub-Pixel Convolutional Neural Network](https://arxiv.org/abs/1609.05158v2)
+[^6]: [Pytorch pretrained resnet models for Danbooru2018](https://github.com/RF5/danbooru-pretrained)
+[^7]: [Image-to-Image Translation with Conditional Adversarial Networks](https://arxiv.org/abs/1611.07004)
+[^8]: [Danbooru2020: A Large-Scale Crowdsourced and Tagged Anime Illustration Dataset](https://www.gwern.net/Danbooru2020)
+[^9]: [Improved Training of Wasserstein GANs](https://arxiv.org/abs/1704.00028)
+
