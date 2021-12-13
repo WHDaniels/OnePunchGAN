@@ -91,7 +91,7 @@ With this approach, our model has a better idea of what to replicate consistentl
 
 | Iteration | Real scan | Generated scan (before U-net) | Real Scan | Generated Scan (after U-net) |
 | :-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|:-------------------------:|
-| 250 | <img src="./readme-images/11_250_real.png" alt="drawing" width="340" /> |  <img src="./readme-images/11_250_generated.png" alt="drawing" width="300" /> | <img src="./readme-images/11_250_real_unet.png" alt="drawing" width="340" /> | <img src="./readme-images/11_250_generated_unet.png" alt="drawing" width="300" /> |
+| 250 | <img src="./readme-images/11_250_real.png" alt="drawing" width="350" /> |  <img src="./readme-images/11_250_generated.png" alt="drawing" width="300" /> | <img src="./readme-images/11_250_real_unet.png" alt="drawing" width="350" /> | <img src="./readme-images/11_250_generated_unet.png" alt="drawing" width="300" /> |
 | 500 | ![](./readme-images/11_500_real.png)  |  ![](./readme-images/11_500_generated.png) |  ![](./readme-images/11_500_real_unet.png) | ![](./readme-images/11_500_generated_unet.png) |
 | 1000 | ![](./readme-images/11_1000_real.png)  |  ![](./readme-images/11_1000_generated.png) |  ![](./readme-images/11_1000_real_unet.png) | ![](./readme-images/11_1000_generated_unet.png) |
 | 2000 | ![](./readme-images/11_2000_real.png) |  ![](./readme-images/11_2000_generated.png) |  ![](./readme-images/11_2000_real_unet.png) | ![](./readme-images/11_2000_generated_unet.png) |
