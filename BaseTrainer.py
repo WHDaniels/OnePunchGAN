@@ -1,4 +1,4 @@
-from dataset import PanelDataset, FinalDataset
+from main.dataset import PanelDataset, FinalDataset
 from torch.utils.data import DataLoader
 from time import perf_counter
 from PIL import Image
@@ -22,10 +22,10 @@ class BaseTrainer:
             self.device1 = torch.device('cuda:0')
             self.device2 = torch.device('cuda:0')
 
-        self.loss_list, self.total_loss_list = list(), list()
-        self.gen_A2B_loss_list, self.gen_B2A_loss_list = list(), list()
-        self.dis_A_loss_list, self.dis_B_loss_list = list(), list()
-        self.avg_gen_loss, self.avg_dis_loss = list(), list()
+        self.loss_list, self.total_loss_list = [], []
+        self.gen_A2B_loss_list, self.gen_B2A_loss_list = [], []
+        self.dis_A_loss_list, self.dis_B_loss_list = [], []
+        self.avg_gen_loss, self.avg_dis_loss = [], []
 
         # creating targets
         # t_size = int((self.args.image_size / 64) ** 2)

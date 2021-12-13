@@ -80,29 +80,12 @@ def move():
 def save_images(image_tensor_dict, args, epoch, i):
     for image_tensor_item in image_tensor_dict.items():
         image_tensor = image_tensor_item[1].data
-        # print(image_tensor_item[0], image_tensor)
         if image_tensor_item[0] == 'almost_real_A':
             image = UnNormalize([0.7137, 0.6628, 0.6519], [0.2970, 0.3017, 0.2979])(image_tensor)
         else:
             image = UnNormalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])(image_tensor)
-        # image = 0.5 * (image_tensor_item[1].data + 1.0)
-        # output_panel_B = 0.5 * (self.gen_B2A(input_panel_B).data + 1.0)
 
         vutils.save_image(image.detach(), f'{args.results_path}\\epoch_{epoch}\\{i}_{image_tensor_item[0]}.png')
-        # vutils.save_image(output_panel_B.detach(), f"{self.args.output_path}/B_{i}.png")
-
-        """
-        image_numpy = image_tensor[0].cpu().float().numpy()  # convert it into a numpy array
-        if image_numpy.shape[0] == 1:  # grayscale to RGB
-            image_numpy = np.tile(image_numpy, (3, 1, 1))
-        image_numpy = np.transpose(image_numpy, (1, 2, 0))
-        # if image_tensor[0] == 'fake_B':
-            # image_numpy = denormalize(image_numpy, [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]) * 255.0
-        # else:
-        image_numpy = denormalize(image_numpy, [0.7137, 0.6628, 0.6519], [0.2970, 0.3017, 0.2979]) * 255.0
-        image = Image.fromarray(image_numpy.astype(np.uint8))
-        image.save(f'{args.results_path}\\epoch_{epoch}\\{i}_{image_tensor_item[0]}.png')
-        """
 
 
 class UnNormalize(object):

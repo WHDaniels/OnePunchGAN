@@ -1,8 +1,8 @@
 from torchvision import utils as vutils
 from matplotlib import pyplot as plt
-from nets import ColorNet, Generator
-from BaseTrainer import BaseTrainer
-from loss import CustomFeatureLoss
+from main.nets import ColorNet, Generator
+from trainers.BaseTrainer import BaseTrainer
+from utilities.loss import CustomFeatureLoss
 from time import perf_counter
 import torchvision
 import torch
@@ -108,7 +108,6 @@ class GenTrainer(BaseTrainer):
     def load_weights(self):
         if self.args.gen_A2B_dict != '':
             self.gen_A2B.load_state_dict(torch.load(self.args.gen_A2B_dict), strict=False)
-
 
     def define_optimizers(self):
         self.gen_A2B_optimizer = torch.optim.Adam(self.gen_A2B.parameters(), lr=self.args.lr, betas=(0.5, 0.999))

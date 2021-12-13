@@ -1,13 +1,16 @@
-import pickle
-import praw.models
+"""
+Not relevant for final approach...
+"""
+
 from urllib.error import HTTPError
 from urllib.error import URLError
 import urllib.request as requests
+import praw.models
+import pickle
+
 
 imgExtensionList = ['.jpg', '.png', '.jpeg', '.bmp']
 excludeList = ['youtube', 'gfycat', 'instagram', 'ustream']
-# downloadFolder = 'E://OPM Colorings//downloads//'
-# downloadFolder = 'E://OPM Colorings//art_downloads//'
 failList = list()
 
 

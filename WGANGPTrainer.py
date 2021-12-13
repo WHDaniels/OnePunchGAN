@@ -1,15 +1,16 @@
-# NOT USED IN FINAL MODEL
+"""
+Not relevant for final approach...
+"""
 
-from nets import ColorNet, Critic, Generator, Discriminator
-from utils import weights_init, init_weights
+from main.nets import ColorNet, Critic, Generator, Discriminator
+from utilities.utils import weights_init, init_weights
+from trainers.BaseTrainer import BaseTrainer
 from torchvision import utils as vutils
 from matplotlib import pyplot as plt
-from BaseTrainer import BaseTrainer
 from time import perf_counter
 from torch import autograd
 import torch
 import os
-
 
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = True
@@ -186,8 +187,8 @@ class WGANGPTrainer(BaseTrainer):
 
     def get_results(self, i, epoch, real_A, real_B):
         """
-# Show results after a multiple of iterations.
-"""
+        Show results after a multiple of iterations.
+        """
         tensor_dict = {}
 
         if i % 50 == 0:
@@ -210,8 +211,8 @@ class WGANGPTrainer(BaseTrainer):
 
     def save_training(self, epoch):
         """
-# Update schedulers, save state_dict of networks, and plot loss metrics.
-"""
+        Update schedulers, save state_dict of networks, and plot loss metrics.
+        """
         # update learning rates
         self.gen_scheduler.step()
         self.critic_scheduler.step()
@@ -244,8 +245,8 @@ class WGANGPTrainer(BaseTrainer):
 
     def test(self):
         """
-# Test inputs to trained model.
-"""
+        Test inputs to trained model.
+        """
         print("Making directories...")
         self.make_test_directories()
 

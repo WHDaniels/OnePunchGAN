@@ -1,5 +1,5 @@
-import torch
 import torch.nn as nn
+import torch
 
 
 class CycleResidualBlock(nn.Module):
@@ -223,6 +223,7 @@ class Discriminator(nn.Module):
     def forward(self, x):
         return self.model(x)
 
+
 class MyConvo2d(nn.Module):
     def __init__(self, input_dim, output_dim, kernel_size, bias=True):
         super(MyConvo2d, self).__init__()
@@ -291,7 +292,7 @@ class ResidualBlock(nn.Module):
         return shortcut + output
 
 
-# https://github.com/jalola/improved-wgan-pytorch
+# adapted from https://github.com/jalola/improved-wgan-pytorch
 class Critic(nn.Module):
 
     # noinspection PyTypeChecker
@@ -333,6 +334,8 @@ class Critic(nn.Module):
         output = output.view(-1)
         return output
 
+
+# adapted from the SAGAN paper
 # noinspection PyTypeChecker
 class SelfAttention(nn.Module):
     def __init__(self, in_channels):
@@ -377,6 +380,7 @@ class SelfAttention(nn.Module):
         return self.gamma * o + x
 
 
+# adapted from https://github.com/sdoria/SimpleSelfAttention
 class SimpleSelfAttention(nn.Module):
     def __init__(self, n_in: int, ks=1):  # , n_out:int):
         super().__init__()

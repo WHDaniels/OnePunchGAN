@@ -1,9 +1,9 @@
-from utils import save_images, weights_init, init_weights
-from nets import ColorNet, Discriminator, Generator
+from main.nets import ColorNet, Discriminator, Generator
+from utilities.utils import save_images, init_weights
+from trainers.BaseTrainer import BaseTrainer
+from utilities.image_pool import ImagePool
 from matplotlib import pyplot as plt
-from BaseTrainer import BaseTrainer
 import torchvision.utils as vutils
-from image_pool import ImagePool
 from time import perf_counter
 import torch
 import os

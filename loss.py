@@ -1,6 +1,10 @@
-import torch
-import torch.nn as nn
+"""
+Not relevant for final approach...
+"""
+
 from collections import OrderedDict
+import torch.nn as nn
+import torch
 
 
 class CustomFeatureLoss(nn.Module):

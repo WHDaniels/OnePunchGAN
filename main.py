@@ -1,9 +1,9 @@
+from trainers.CycleTrainer import CycleTrainer
+from trainers.GenTrainer import GenTrainer
+from trainers.FinalTrainer import FinalTrainer
 import argparse
 import os
-from CycleTrainer import CycleTrainer
-from GenTrainer import GenTrainer
-from WGANGPTrainer import WGANGPTrainer
-from FinalTrainer import FinalTrainer
+
 
 parser = argparse.ArgumentParser()
 
@@ -39,7 +39,7 @@ parser.add_argument('--output_path', type=str, default=str(os.getcwd()) + '\\out
 parser.add_argument('--shuffle', type=bool, default=False, help='Shuffle data in data loader after each epoch')
 parser.add_argument('--metrics', type=bool, default=False, help='Output loss versus number of epochs plot (per epoch)')
 
-parser.add_argument('--critic_iters', type=int, default=5, help='Iterations to run critic for per run')
+parser.add_argument('--critic_iters', type=int, default=2, help='Iterations to run critic for per run')
 
 args = parser.parse_args()
 
@@ -61,22 +61,14 @@ if __name__ == "__main__":
         trainer = GenTrainer(args)
         trainer.test()
 
-    elif args.model == "gan" and args.mode == 'train':
-        trainer = WGANGPTrainer(args)
-        trainer.train()
-
-    elif args.model == "gan" and args.mode == 'test':
-        trainer = WGANGPTrainer(args)
-        trainer.test()
-
-    elif args.model == "final" and args.mode == 'train':
+    elif 'final' in args.model and args.mode == 'train':
         trainer = FinalTrainer(args)
         trainer.train()
 
-    elif args.model == "final" and args.mode == 'test':
+    elif 'final' in args.model and args.mode == 'test':
         trainer = FinalTrainer(args)
         trainer.test()
 
     else:
-        print("Please enter a valid model: \'cycle\', \'gan\', \'gen\', or \'final\' "
+        print("Please enter a valid model: \'cycle\', \'gan\', \'gen\', \'final\', or \'final_with_wgangp\' "
               "along with a valid mode: \'train\' or \'test\'")

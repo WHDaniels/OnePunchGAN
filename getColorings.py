@@ -1,3 +1,7 @@
+"""
+Not relevant for final approach...
+"""
+
 from psaw import PushshiftAPI
 import datetime as dt
 import praw.models

@@ -1,5 +1,5 @@
 """
-Adapted from https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix
+Adapted (in this case taken with no modifications) from https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix
 """
 
 import random

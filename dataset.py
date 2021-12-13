@@ -1,8 +1,8 @@
 from torchvision import transforms as ts
 from torch.utils.data import Dataset
+from utilities.utils import *
 from PIL import ImageFile
 from PIL import Image
-from utils import *
 import random
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
